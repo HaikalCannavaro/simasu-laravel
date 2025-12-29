@@ -6,6 +6,7 @@ use App\Http\Controllers\InventarisController;
 use App\Http\Controllers\RuanganController;
 use App\Http\Controllers\KalenderController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ProfilController;
 use App\Http\Middleware\CekLoginApi;
 
 Route::get('/', function () {
@@ -23,12 +24,13 @@ Route::middleware([CekLoginApi::class])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/inventaris', [InventarisController::class, 'index'])->name('inventaris');
-    Route::post('/inventaris', [InventarisController::class, 'store'])
-        ->name('inventaris.store');
-    Route::delete('/inventaris/{id}', [InventarisController::class, 'destroy'])
-        ->name('inventaris.destroy');
-
+    Route::post('/inventaris', [InventarisController::class, 'store'])->name('inventaris.store');
+    Route::put('/inventaris/{id}', [InventarisController::class, 'update'])->name('inventaris.update');
+    Route::delete('/inventaris/{id}', [InventarisController::class, 'destroy'])->name('inventaris.destroy');
     Route::get('/ruangan', [RuanganController::class, 'index'])->name('ruangan');
     Route::get('/kalender', [KalenderController::class, 'index'])->name('kalender');
-    Route::get('/profil', [InventarisController::class, 'index'])->name('profil');
+    Route::get('/profil', [App\Http\Controllers\ProfilController::class, 'index'])->name('profil');
+    Route::put('/profil/update', [App\Http\Controllers\ProfilController::class, 'update'])->name('profil.update');
+    Route::put('/profil/password', [App\Http\Controllers\ProfilController::class, 'updatePassword'])->name('profil.password');
+    Route::post('/profil/photo', [App\Http\Controllers\ProfilController::class, 'updatePhoto'])->name('profil.photo');
 });
