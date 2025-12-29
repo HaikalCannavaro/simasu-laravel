@@ -26,7 +26,7 @@ class AuthController extends Controller
 
         try {
             $baseUrl = config('api.base_url');
-            $response = Http::post("{$baseUrl}/api/login", [
+            $response = Http::withoutVerifying()->post("{$baseUrl}/api/login", [
                 'email' => $request->email,
                 'password' => $request->password,
             ]);

@@ -22,6 +22,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware([CekLoginApi::class])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
     Route::get('/inventaris', [InventarisController::class, 'index'])->name('inventaris');
     Route::post('/inventaris', [InventarisController::class, 'store'])->name('inventaris.store');
     Route::put('/inventaris/{id}', [InventarisController::class, 'update'])->name('inventaris.update');
