@@ -6,6 +6,7 @@ use App\Http\Controllers\InventarisController;
 use App\Http\Controllers\RuanganController;
 use App\Http\Controllers\KalenderController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ProfilController;
 use App\Http\Middleware\CekLoginApi;
 
 Route::get('/', function () {
@@ -20,14 +21,38 @@ Route::post('/login', [AuthController::class, 'login'])->name('login.process');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware([CekLoginApi::class])->group(function () {
+    // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Announcements CRUD
+    Route::get('/dashboard/announcements/create', [DashboardController::class, 'createAnnouncement'])->name('announcements.create');
+    Route::post('/dashboard/announcements', [DashboardController::class, 'storeAnnouncement'])->name('announcements.store');
+    Route::get('/dashboard/announcements/{id}/edit', [DashboardController::class, 'editAnnouncement'])->name('announcements.edit');
+    Route::put('/dashboard/announcements/{id}', [DashboardController::class, 'updateAnnouncement'])->name('announcements.update');
+    Route::delete('/dashboard/announcements/{id}', [DashboardController::class, 'deleteAnnouncement'])->name('announcements.delete');
+
+    // Events CRUD
+    Route::get('/dashboard/events/create', [DashboardController::class, 'createEvent'])->name('events.create');
+    Route::post('/dashboard/events', [DashboardController::class, 'storeEvent'])->name('events.store');
+    Route::get('/dashboard/events/{id}/edit', [DashboardController::class, 'editEvent'])->name('events.edit');
+    Route::put('/dashboard/events/{id}', [DashboardController::class, 'updateEvent'])->name('events.update');
+    Route::delete('/dashboard/events/{id}', [DashboardController::class, 'deleteEvent'])->name('events.delete');
+
+    // Inventaris
     Route::get('/inventaris', [InventarisController::class, 'index'])->name('inventaris');
     Route::post('/inventaris', [InventarisController::class, 'store'])->name('inventaris.store');
     Route::put('/inventaris/{id}', [InventarisController::class, 'update'])->name('inventaris.update');
     Route::delete('/inventaris/{id}', [InventarisController::class, 'destroy'])->name('inventaris.destroy');
 
+    // Ruangan
     Route::get('/ruangan', [RuanganController::class, 'index'])->name('ruangan');
+
+    // Kalender
     Route::get('/kalender', [KalenderController::class, 'index'])->name('kalender');
-    Route::get('/profil', [InventarisController::class, 'index'])->name('profil');
+
+    // Profil
+    Route::get('/profil', [ProfilController::class, 'index'])->name('profil');
+    Route::put('/profil/update', [ProfilController::class, 'update'])->name('profil.update');
+    Route::put('/profil/password', [ProfilController::class, 'updatePassword'])->name('profil.password');
+    Route::post('/profil/photo', [ProfilController::class, 'updatePhoto'])->name('profil.photo');
 });
