@@ -4,8 +4,6 @@
 
 @section('content')
 <div class="d-flex">
-    @include('partials.sidebar')
-
     <div class="main-content flex-grow-1 p-4">
         <div class="content-header d-flex justify-content-between align-items-start mb-4">
             <div>
