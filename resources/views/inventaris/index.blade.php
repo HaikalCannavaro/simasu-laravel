@@ -35,13 +35,12 @@
     <div class="card-body">
         {{-- Search --}}
         <div class="mb-3">
-            <input 
-                type="text" 
-                class="form-control" 
-                id="searchInput" 
-                placeholder="Cari barang..." 
-                style="max-width: 400px;"
-            >
+            <input
+                type="text"
+                class="form-control"
+                id="searchInput"
+                placeholder="Cari barang..."
+                style="max-width: 400px;">
         </div>
 
         {{-- Table --}}
@@ -59,61 +58,68 @@
                 </thead>
                 <tbody id="tableBody">
                     @if(isset($inventaris) && count($inventaris) > 0)
-                        @foreach($inventaris as $item)
-                        <tr>
-                            <td class="fw-semibold">{{ $item->nama_barang ?? '-' }}</td>
-                            <td>{{ $item->kategori ?? '-' }}</td>
-                            <td>{{ $item->jumlah ?? 0 }}</td>
-                            <td>
-                                @php
-                                    $jumlah = $item->jumlah ?? 0;
-                                @endphp
-                                @if($jumlah > 10)
-                                    <span class="badge bg-success">Tersedia</span>
-                                @elseif($jumlah > 0)
-                                    <span class="badge bg-warning text-dark">Terbatas</span>
-                                @else
-                                    <span class="badge bg-danger">Habis</span>
-                                @endif
-                            </td>
-                            <td>
-                                @if($item->updated_at)
-                                    {{ $item->updated_at->format('d/m/Y') }}
-                                @else
-                                    -
-                                @endif
-                            </td>
-                            <td class="text-center">
-                                <button 
-                                    class="btn btn-sm btn-primary btn-edit" 
-                                    data-id="{{ $item->id }}"
-                                    data-nama="{{ $item->nama_barang }}"
-                                    data-kategori="{{ $item->kategori }}"
-                                    data-jumlah="{{ $item->jumlah }}"
-                                >
-                                    <i class="bi bi-pencil"></i>
+                    @foreach($inventaris as $item)
+                    <tr>
+                        <td class="fw-semibold">
+                            {{ $item->nama_barang ?? '-' }}
+                            {{-- Menampilkan deskripsi singkat jika ada (opsional) --}}
+                            @if(!empty($item->deskripsi) && $item->deskripsi !== '-')
+                                <br><small class="text-muted" style="font-size: 0.75rem;">{{ Str::limit($item->deskripsi, 30) }}</small>
+                            @endif
+                        </td>
+                        <td>{{ $item->kategori ?? '-' }}</td>
+                        <td>{{ $item->jumlah ?? 0 }}</td>
+                        <td>
+                            @php
+                            $jumlah = $item->jumlah ?? 0;
+                            @endphp
+                            @if($jumlah > 10)
+                            <span class="badge bg-success">Tersedia</span>
+                            @elseif($jumlah > 0)
+                            <span class="badge bg-warning text-dark">Terbatas</span>
+                            @else
+                            <span class="badge bg-danger">Habis</span>
+                            @endif
+                        </td>
+                        <td>
+                            @if($item->updated_at)
+                            {{ $item->updated_at->format('d/m/Y') }}
+                            @else
+                            -
+                            @endif
+                        </td>
+                        <td class="text-center">
+                            {{-- Tombol Edit dengan Data Attribute Lengkap --}}
+                            <button
+                                class="btn btn-sm btn-primary btn-edit"
+                                data-id="{{ $item->id }}"
+                                data-nama="{{ $item->nama_barang }}"
+                                data-kategori="{{ $item->kategori }}"
+                                data-jumlah="{{ $item->jumlah }}"
+                                data-deskripsi="{{ $item->deskripsi ?? '' }}">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            
+                            <form
+                                action="{{ route('inventaris.destroy', $item->id) }}"
+                                method="POST"
+                                class="d-inline"
+                                onsubmit="return confirm('Yakin ingin menghapus barang ini?')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-sm btn-danger">
+                                    <i class="bi bi-trash"></i>
                                 </button>
-                                <form 
-                                    action="{{ route('inventaris.destroy', $item->id) }}" 
-                                    method="POST" 
-                                    class="d-inline"
-                                    onsubmit="return confirm('Yakin ingin menghapus barang ini?')"
-                                >
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-danger">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                        @endforeach
+                            </form>
+                        </td>
+                    </tr>
+                    @endforeach
                     @else
-                        <tr>
-                            <td colspan="6" class="text-center text-muted py-4">
-                                Belum ada data inventaris
-                            </td>
-                        </tr>
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            Belum ada data inventaris
+                        </td>
+                    </tr>
                     @endif
                 </tbody>
             </table>
@@ -121,8 +127,8 @@
 
         {{-- Footer Count --}}
         <div class="text-center mt-3 text-muted small">
-            Menampilkan 
-            <span id="itemCount">{{ isset($inventaris) ? count($inventaris) : 0 }}</span> dari 
+            Menampilkan
+            <span id="itemCount">{{ isset($inventaris) ? count($inventaris) : 0 }}</span> dari
             <span id="totalCount">{{ isset($inventaris) ? count($inventaris) : 0 }}</span> barang
         </div>
     </div>
@@ -140,20 +146,21 @@
                 @csrf
                 <input type="hidden" name="_method" value="POST" id="formMethod">
                 <input type="hidden" name="id" id="itemId">
-                
+
                 <div class="modal-body">
+                    {{-- Nama Barang --}}
                     <div class="mb-3">
                         <label for="namaBarang" class="form-label">Nama Barang <span class="text-danger">*</span></label>
-                        <input 
-                            type="text" 
-                            class="form-control" 
-                            id="namaBarang" 
-                            name="nama_barang" 
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="namaBarang"
+                            name="nama_barang"
                             placeholder="Contoh: Sajadah"
-                            required
-                        >
+                            required>
                     </div>
-                    
+
+                    {{-- Kategori --}}
                     <div class="mb-3">
                         <label for="kategori" class="form-label">Kategori <span class="text-danger">*</span></label>
                         <select class="form-select" id="kategori" name="kategori" required>
@@ -165,21 +172,32 @@
                             <option value="Perlengkapan">Perlengkapan</option>
                         </select>
                     </div>
-                    
+
+                    {{-- Jumlah --}}
                     <div class="mb-3">
                         <label for="jumlah" class="form-label">Jumlah <span class="text-danger">*</span></label>
-                        <input 
-                            type="number" 
-                            class="form-control" 
-                            id="jumlah" 
-                            name="jumlah" 
-                            min="0" 
+                        <input
+                            type="number"
+                            class="form-control"
+                            id="jumlah"
+                            name="jumlah"
+                            min="0"
                             placeholder="0"
-                            required
-                        >
+                            required>
+                    </div>
+
+                    {{-- Deskripsi (BARU: Sesuai API) --}}
+                    <div class="mb-3">
+                        <label for="deskripsi" class="form-label">Deskripsi</label>
+                        <textarea 
+                            class="form-control" 
+                            id="deskripsi" 
+                            name="deskripsi" 
+                            rows="3" 
+                            placeholder="Contoh: Barang hibah tahun 2024, kondisi baik."></textarea>
                     </div>
                 </div>
-                
+
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-success">Simpan</button>
@@ -197,69 +215,72 @@
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Search functionality
-    const searchInput = document.getElementById('searchInput');
-    const tableBody = document.getElementById('tableBody');
-    
-    if (searchInput && tableBody) {
-        searchInput.addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase();
-            const rows = tableBody.getElementsByTagName('tr');
-            let visibleCount = 0;
-            
-            Array.from(rows).forEach(row => {
-                const text = row.textContent.toLowerCase();
-                const isVisible = text.includes(searchTerm);
-                row.style.display = isVisible ? '' : 'none';
-                if (isVisible && !row.querySelector('td[colspan]')) {
-                    visibleCount++;
-                }
+    document.addEventListener('DOMContentLoaded', function() {
+        // Search functionality
+        const searchInput = document.getElementById('searchInput');
+        const tableBody = document.getElementById('tableBody');
+
+        if (searchInput && tableBody) {
+            searchInput.addEventListener('input', function(e) {
+                const searchTerm = e.target.value.toLowerCase();
+                const rows = tableBody.getElementsByTagName('tr');
+                let visibleCount = 0;
+
+                Array.from(rows).forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    const isVisible = text.includes(searchTerm);
+                    row.style.display = isVisible ? '' : 'none';
+                    if (isVisible && !row.querySelector('td[colspan]')) {
+                        visibleCount++;
+                    }
+                });
+
+                document.getElementById('itemCount').textContent = visibleCount;
             });
-            
-            document.getElementById('itemCount').textContent = visibleCount;
+        }
+
+        // Edit button functionality
+        document.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                const nama = this.getAttribute('data-nama');
+                const kategori = this.getAttribute('data-kategori');
+                const jumlah = this.getAttribute('data-jumlah');
+                const deskripsi = this.getAttribute('data-deskripsi'); // Ambil deskripsi
+
+                // Update modal title
+                document.getElementById('modalBarangLabel').textContent = 'Edit Barang';
+
+                // Update form action and method
+                const form = document.getElementById('formBarang');
+                form.action = `/inventaris/${id}`;
+                document.getElementById('formMethod').value = 'PUT';
+
+                // Fill form fields
+                document.getElementById('namaBarang').value = nama;
+                document.getElementById('kategori').value = kategori;
+                document.getElementById('jumlah').value = jumlah;
+                document.getElementById('deskripsi').value = deskripsi ? deskripsi : ''; // Isi deskripsi
+                document.getElementById('itemId').value = id;
+
+                // Show modal
+                const modal = new bootstrap.Modal(document.getElementById('modalBarang'));
+                modal.show();
+            });
         });
-    }
-    
-    // Edit button functionality
-    document.querySelectorAll('.btn-edit').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const id = this.getAttribute('data-id');
-            const nama = this.getAttribute('data-nama');
-            const kategori = this.getAttribute('data-kategori');
-            const jumlah = this.getAttribute('data-jumlah');
-            
-            // Update modal title
-            document.getElementById('modalBarangLabel').textContent = 'Edit Barang';
-            
-            // Update form action and method
-            const form = document.getElementById('formBarang');
-            form.action = `/inventaris/${id}`;
-            document.getElementById('formMethod').value = 'PUT';
-            
-            // Fill form fields
-            document.getElementById('namaBarang').value = nama;
-            document.getElementById('kategori').value = kategori;
-            document.getElementById('jumlah').value = jumlah;
-            document.getElementById('itemId').value = id;
-            
-            // Show modal
-            const modal = new bootstrap.Modal(document.getElementById('modalBarang'));
-            modal.show();
-        });
+
+        // Reset modal when closed
+        const modalElement = document.getElementById('modalBarang');
+        if (modalElement) {
+            modalElement.addEventListener('hidden.bs.modal', function() {
+                document.getElementById('formBarang').reset();
+                document.getElementById('modalBarangLabel').textContent = 'Tambah Barang';
+                document.getElementById('formBarang').action = '{{ route("inventaris.store") }}';
+                document.getElementById('formMethod').value = 'POST';
+                document.getElementById('itemId').value = '';
+                // Field deskripsi otomatis kosong karena form.reset()
+            });
+        }
     });
-    
-    // Reset modal when closed
-    const modalElement = document.getElementById('modalBarang');
-    if (modalElement) {
-        modalElement.addEventListener('hidden.bs.modal', function () {
-            document.getElementById('formBarang').reset();
-            document.getElementById('modalBarangLabel').textContent = 'Tambah Barang';
-            document.getElementById('formBarang').action = '{{ route("inventaris.store") }}';
-            document.getElementById('formMethod').value = 'POST';
-            document.getElementById('itemId').value = '';
-        });
-    }
-});
 </script>
 @endpush
