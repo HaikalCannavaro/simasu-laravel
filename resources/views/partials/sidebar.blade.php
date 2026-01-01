@@ -6,7 +6,7 @@
 
     <ul class="nav nav-pills flex-column mb-auto gap-1">
         <li class="nav-item">
-            <a href="{{ route('dashboard') }}" class="nav-link text-white">
+            <a href="{{ route('dashboard') }}" class="nav-link text-white {{ request()->routeIs('dashboard*') ? 'active bg-success' : '' }}">
                 <img src="{{ asset('icons/home.png') }}" width="18" class="me-2">
                 Dashboard
             </a>

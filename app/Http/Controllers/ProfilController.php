@@ -36,7 +36,7 @@ class ProfilController extends Controller
             return view('profil.index', compact('user'));
         }
 
-        return redirect()->route('dashboard')->with('error', 'Gagal mengambil data profil. Pastikan API berjalan.');
+        return redirect()->route('profil')->with('error', 'Gagal mengambil data profil. Pastikan API berjalan.');
     }
 
     public function update(Request $request)
