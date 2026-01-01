@@ -3,383 +3,305 @@
 @section('title', 'Sewa Ruangan - SIMASU')
 
 @section('content')
-<div class="d-flex">
-    <div class="main-content flex-grow-1 p-4">
-        <div class="content-header d-flex justify-content-between align-items-start mb-4">
-            <div>
-                <h1 class="page-title mb-1">Sewa Ruangan</h1>
-                <p class="page-subtitle text-muted">Kelola pemesanan dan penyewaan ruang masjid</p>
-            </div>
-            <button class="btn btn-success" id="btnTambahRuangan">
-                + Tambah Ruangan
-            </button>
+<div class="container-fluid px-4">
+
+    {{-- Header Section --}}
+    <div class="d-flex justify-content-between align-items-center my-4">
+        <div>
+            <h1 class="h3 fw-bold text-dark mb-1">Sewa Ruangan</h1>
+            <p class="text-muted mb-0">Kelola pemesanan dan penyewaan ruang masjid</p>
         </div>
+
+        @if(session('user.role') == 'admin')
+        {{-- Tombol Tambah dengan Warna Hijau (Sesuai Gambar) --}}
+        <button type="button" class="btn btn-success" onclick="openModal('add')">
+            <i class="fas fa-plus me-1"></i> + Tambah Ruangan
+        </button>
+        @endif
+    </div>
+
+    {{-- Grid Ruangan --}}
+    <div class="row g-4">
+        @forelse($rooms as $room)
+        <div class="col-xl-4 col-md-6">
+            <div class="card h-100 border-0 shadow-sm" style="border-radius: 12px;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h5 class="card-title fw-bold text-dark mb-1">{{ $room['name'] }}</h5>
+                            <span class="text-muted small">
+                                <i class="fas fa-layer-group me-1"></i> {{ $room['floor'] }}
+                            </span>
+                        </div>
+                        {{-- Badge Status --}}
+                        <span class="badge bg-opacity-10 text-success bg-success px-3 py-2 rounded-pill">
+                            {{ ucfirst($room['status']) }}
+                        </span>
+                    </div>
+
+                    <p class="text-muted small mb-3" style="min-height: 40px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                        {{ $room['description'] }}
+                    </p>
+
+                    <div class="d-flex align-items-center text-muted small mb-4">
+                        <i class="fas fa-users me-2"></i> Kapasitas:
+                        <strong class="ms-1">{{ $room['capacity'] }} orang</strong>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        @if(session('user.role') == 'admin')
+                            {{-- Admin Actions --}}
         
-        <div class="room-grid" id="roomGrid">
-            @foreach($rooms as $room)
-            <div class="room-card">
-                <div class="room-header">
-                    <div>
-                        <h3 class="room-title">{{ $room['name'] }}</h3>
+                            {{-- Tombol Edit (Biru) --}}
+                            <button class="btn btn-primary flex-fill" onclick='editRoomLocal(@json($room))'>
+                                Edit
+                            </button>
+        
+                            {{-- Tombol Delete (Merah) --}}
+                            {{-- Tambahkan 'flex-fill' di sini agar ukurannya sama dengan Edit --}}
+                            <button class="btn btn-danger flex-fill" onclick="deleteRoom({{ $room['id'] }})">
+                                Delete <i class="fas fa-trash"></i>
+                            </button>
+        
+                        @else
+                            {{-- User Actions --}}
+                            <button class="btn btn-outline-secondary flex-fill" onclick="lihatDetail({{ $room['id'] }})">
+                                Detail
+                            </button>
+                            <button class="btn btn-success flex-fill" onclick="pesanRuangan({{ $room['id'] }})">
+                                Pesan
+                            </button>
+                        @endif
                     </div>
-                    <span class="room-badge badge-{{ $room['status'] }}">
-                        {{ $room['status'] == 'tersedia' ? 'Tersedia' : ($room['status'] == 'disewa' ? 'Disewa' : 'Pemeliharaan') }}
-                    </span>
-                </div>
-                <div class="room-location">
-                    <span>{{ $room['floor'] }}</span>
-                </div>
-                <p class="room-description">{{ $room['description'] }}</p>
-                <div class="room-info">
-                    <div class="info-item">
-                        <span class="info-text">Kapasitas: {{ $room['capacity'] }} orang</span>
-                    </div>
-                </div>
-                <div class="room-actions">
-                    <button class="btn btn-outline" onclick="pesanRuangan({{ $room['id'] }})">
-                        <span>Pesan</span>
-                    </button>
-                    <button class="btn btn-secondary" onclick="lihatDetail({{ $room['id'] }})">
-                        Detail
-                    </button>
                 </div>
             </div>
-            @endforeach
+        </div>
+        @empty
+        <div class="col-12 text-center py-5">
+            <div class="mb-3">
+                <i class="fas fa-building fa-3x text-muted opacity-25"></i>
+            </div>
+            <h5 class="text-muted">Belum ada ruangan tersedia</h5>
+        </div>
+        @endforelse
+    </div>
+</div>
+
+{{-- Modal Form (Menggunakan Bootstrap Modal Standard) --}}
+<div class="modal fade" id="roomModal" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title fw-bold" id="modalTitle">Tambah Ruangan Baru</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="roomForm" onsubmit="handleSaveRoom(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="roomId">
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">Nama Ruangan <span class="text-danger">*</span></label>
+                        <input type="text" id="name" class="form-control" required placeholder="Contoh: Aula Serbaguna">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">Lantai <span class="text-danger">*</span></label>
+                        <select id="floor" class="form-select" required>
+                            <option value="">Pilih Lantai</option>
+                            <option value="Lantai 1">Lantai 1</option>
+                            <option value="Lantai 2">Lantai 2</option>
+                            <option value="Lantai 3">Lantai 3</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">Deskripsi <span class="text-danger">*</span></label>
+                        <textarea id="description" class="form-control" rows="3" required placeholder="Deskripsi fasilitas ruangan..."></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">Kapasitas (orang) <span class="text-danger">*</span></label>
+                        <input type="number" id="capacity" class="form-control" required min="1" placeholder="0">
+                    </div>
+
+                    {{-- Note: Status dihilangkan karena Controller tidak menyimpan status (default 'tersedia' di backend) --}}
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success px-4" id="btnSave">Simpan Ruangan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modal Detail --}}
+<div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Detail Ruangan</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailContent">
+                {{-- Content injected via JS --}}
+            </div>
         </div>
     </div>
 </div>
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// CSRF Token untuk Ajax
-const csrfToken = '{{ csrf_token() }}';
+    const csrfToken = '{{ csrf_token() }}';
+    let isEditMode = false;
 
-function pesanRuangan(roomId) {
-    fetch(`/ruangan/${roomId}/book`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification(data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('Terjadi kesalahan saat memproses pemesanan');
+    let roomModal, detailModal;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        roomModal = new bootstrap.Modal(document.getElementById('roomModal'));
+        detailModal = new bootstrap.Modal(document.getElementById('detailModal'));
     });
-}
 
-function lihatDetail(roomId) {
-    fetch(`/ruangan/${roomId}`)
-        .then(response => response.json())
-        .then(room => {
-            if (room) {
-                showDetailModal(room);
-            }
-        })
-        .catch(error => console.error('Error:', error));
-}
+    // 1. Buka Modal Form
+    function openModal(mode) {
+        const title = document.getElementById('modalTitle');
+        const btn = document.getElementById('btnSave');
+        const form = document.getElementById('roomForm');
 
-function showDetailModal(room) {
-    const statusText = getStatusText(room.status);
-    const modalHTML = `
-        <div class="modal fade show d-block" id="detailModal" style="background: rgba(0,0,0,0.5);" onclick="closeModal(event)">
-            <div class="modal-dialog modal-dialog-centered" onclick="event.stopPropagation()">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Detail Ruangan</h5>
-                        <button type="button" class="btn-close" onclick="closeModal()"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <strong>Nama Ruangan:</strong>
-                            <p class="mb-0">${room.name}</p>
-                        </div>
-                        <div class="mb-3">
-                            <strong>Lokasi:</strong>
-                            <p class="mb-0">${room.floor}</p>
-                        </div>
-                        <div class="mb-3">
-                            <strong>Status:</strong>
-                            <span class="room-badge badge-${room.status}">${statusText}</span>
-                        </div>
-                        <div class="mb-3">
-                            <strong>Kapasitas:</strong>
-                            <p class="mb-0">${room.capacity} orang</p>
-                        </div>
-                        <div class="mb-3">
-                            <strong>Deskripsi:</strong>
-                            <p class="mb-0">${room.description}</p>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Tutup</button>
-                        <button type="button" class="btn btn-success" onclick="pesanRuangan(${room.id}); closeModal();">
-                            Pesan Ruangan
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    document.body.style.overflow = 'hidden';
-}
-
-function showAddRoomModal() {
-    const modalHTML = `
-        <div class="modal fade show d-block" id="addRoomModal" style="background: rgba(0,0,0,0.5);" onclick="closeAddModal(event)">
-            <div class="modal-dialog modal-dialog-centered" onclick="event.stopPropagation()">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Tambah Ruangan Baru</h5>
-                        <button type="button" class="btn-close" onclick="closeAddModal()"></button>
-                    </div>
-                    <form id="addRoomForm" onsubmit="handleAddRoom(event)">
-                        <div class="modal-body">
-                            <div class="mb-3">
-                                <label class="form-label">Nama Ruangan <span class="text-danger">*</span></label>
-                                <input type="text" id="roomName" class="form-control" placeholder="Contoh: Aula Serbaguna" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Lantai <span class="text-danger">*</span></label>
-                                <select id="roomFloor" class="form-select" required>
-                                    <option value="">Pilih Lantai</option>
-                                    <option value="Lantai 1">Lantai 1</option>
-                                    <option value="Lantai 2">Lantai 2</option>
-                                    <option value="Lantai 3">Lantai 3</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Deskripsi <span class="text-danger">*</span></label>
-                                <textarea id="roomDescription" class="form-control" rows="3" placeholder="Deskripsi ruangan..." required></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Kapasitas (orang) <span class="text-danger">*</span></label>
-                                <input type="number" id="roomCapacity" class="form-control" min="0" placeholder="0" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Status <span class="text-danger">*</span></label>
-                                <select id="roomStatus" class="form-select" required>
-                                    <option value="">Pilih Status</option>
-                                    <option value="tersedia">Tersedia</option>
-                                    <option value="disewa">Disewa</option>
-                                    <option value="pemeliharaan">Pemeliharaan</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" onclick="closeAddModal()">Batal</button>
-                            <button type="submit" class="btn btn-success">Simpan Ruangan</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    document.body.style.overflow = 'hidden';
-}
-
-function handleAddRoom(event) {
-    event.preventDefault();
-    
-    const formData = {
-        name: document.getElementById('roomName').value,
-        floor: document.getElementById('roomFloor').value,
-        description: document.getElementById('roomDescription').value,
-        capacity: parseInt(document.getElementById('roomCapacity').value),
-        status: document.getElementById('roomStatus').value
-    };
-    
-    fetch('/ruangan', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken
-        },
-        body: JSON.stringify(formData)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showNotification(data.message);
-            closeAddModal();
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+        if (mode === 'add') {
+            isEditMode = false;
+            title.innerText = 'Tambah Ruangan Baru';
+            btn.innerText = 'Simpan Ruangan';
+            form.reset();
+            document.getElementById('roomId').value = '';
+        } else {
+            isEditMode = true;
+            title.innerText = 'Edit Ruangan';
+            btn.innerText = 'Update Ruangan';
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showNotification('Terjadi kesalahan saat menambahkan ruangan');
-    });
-}
 
-function getStatusText(status) {
-    const statusMap = {
-        'tersedia': 'Tersedia',
-        'disewa': 'Disewa',
-        'pemeliharaan': 'Pemeliharaan'
-    };
-    return statusMap[status] || status;
-}
+        roomModal.show();
+    }
 
-function showNotification(message) {
-    const notificationHTML = `
-        <div class="position-fixed top-0 end-0 p-3" style="z-index: 9999;">
-            <div class="toast show align-items-center text-white bg-success border-0" role="alert">
-                <div class="d-flex">
-                    <div class="toast-body">
-                        ✓ ${message}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.insertAdjacentHTML('beforeend', notificationHTML);
+    // 2. Simpan / Update Data
+    function handleSaveRoom(e) {
+        e.preventDefault();
+
+        const id = document.getElementById('roomId').value;
+        const btn = document.getElementById('btnSave');
+
+        // Ambil data
+        const formData = {
+            name: document.getElementById('name').value,
+            floor: document.getElementById('floor').value,
+            capacity: parseInt(document.getElementById('capacity').value),
+            description: document.getElementById('description').value
+        };
+
+        let url = isEditMode ? `/ruangan/${id}` : '/ruangan';
+        let method = isEditMode ? 'PUT' : 'POST';
+
+        // UI Loading
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
+
+        fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    roomModal.hide();
+                    window.location.reload();
+                } else {
+                    alert('Gagal: ' + (d.message || 'Periksa kembali inputan anda'));
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Terjadi kesalahan sistem');
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerText = isEditMode ? 'Update Ruangan' : 'Simpan Ruangan';
+            });
+    }
+
+    // 3. Load Data untuk Edit
+    function editRoomLocal(room) {
+    // 1. Buka Modal dalam mode edit
+    openModal('edit');
+
+    // 2. Isi form langsung dari data yang dikirim tombol
+    document.getElementById('roomId').value = room.id;
+    document.getElementById('name').value = room.name;
+    document.getElementById('floor').value = room.floor;
+    document.getElementById('capacity').value = room.capacity;
     
-    setTimeout(() => {
-        const toast = document.querySelector('.toast');
-        if (toast) {
-            toast.classList.remove('show');
-            setTimeout(() => toast.parentElement.remove(), 300);
-        }
-    }, 3000);
+    document.getElementById('description').value = room.description || room.facilities || '';
 }
+    // 4. Hapus Data
+    function deleteRoom(id) {
+        if (!confirm('Apakah Anda yakin ingin menghapus ruangan ini?')) return;
 
-function closeModal(event) {
-    if (event && event.target.className.indexOf('modal') === -1) return;
-    const modal = document.getElementById('detailModal');
-    if (modal) {
-        modal.remove();
-        document.body.style.overflow = 'auto';
+        fetch(`/ruangan/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json'
+                }
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    window.location.reload();
+                } else {
+                    alert('Gagal menghapus: ' + d.message);
+                }
+            })
+            .catch(e => console.error(e));
     }
-}
 
-function closeAddModal(event) {
-    if (event && event.target.className.indexOf('modal') === -1) return;
-    const modal = document.getElementById('addRoomModal');
-    if (modal) {
-        modal.remove();
-        document.body.style.overflow = 'auto';
+    // 5. Lihat Detail (Read Only)
+    function lihatDetail(id) {
+        fetch(`/ruangan/${id}`).then(r => r.json()).then(room => {
+            const content = `
+                <h4 class="fw-bold mb-3">${room.name}</h4>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.7rem">Lantai</small>
+                        <span class="fs-5">${room.floor}</span>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.7rem">Kapasitas</small>
+                        <span class="fs-5">${room.capacity} Orang</span>
+                    </div>
+                </div>
+                <div class="bg-light p-3 rounded border">
+                    <small class="text-muted d-block mb-1 fw-bold">Fasilitas</small>
+                    <p class="mb-0 text-secondary">${room.description || room.facilities || '-'}</p>
+                </div>
+            `;
+            document.getElementById('detailContent').innerHTML = content;
+            detailModal.show();
+        });
     }
-}
 
-// Event listener untuk tombol tambah ruangan
-document.getElementById('btnTambahRuangan').addEventListener('click', () => {
-    showAddRoomModal();
-});
+    // 6. Pesan Ruangan
+    function pesanRuangan(id) {
+        if (!confirm('Lanjutkan ke proses pemesanan?')) return;
+        fetch(`/ruangan/${id}/book`)
+            .then(r => r.json())
+            .then(d => alert(d.message))
+            .catch(e => console.error(e));
+    }
 </script>
-@endpush
-
-@push('styles')
-<style>
-.main-content {
-    background: #f8f9fa;
-    min-height: 100vh;
-}
-.content-header {
-    margin-bottom: 2rem;
-}
-.page-title {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #212529;
-    margin-bottom: 0.25rem;
-}
-.page-subtitle {
-    font-size: 0.95rem;
-    color: #6c757d;
-}
-.room-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
-}
-.room-card {
-    background: white;
-    border-radius: 12px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-.room-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-}
-.room-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: start;
-    margin-bottom: 0.75rem;
-}
-.room-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #212529;
-    margin: 0;
-}
-.room-badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-.badge-tersedia {
-    background: #d1f4e0;
-    color: #15803d;
-}
-.badge-disewa {
-    background: #fee2e2;
-    color: #dc2626;
-}
-.badge-pemeliharaan {
-    background: #fef3c7;
-    color: #d97706;
-}
-.room-location {
-    font-size: 0.875rem;
-    color: #6c757d;
-    margin-bottom: 0.75rem;
-}
-.room-description {
-    color: #495057;
-    font-size: 0.9rem;
-    margin-bottom: 1rem;
-    line-height: 1.5;
-}
-.room-info {
-    margin-bottom: 1rem;
-}
-.info-text {
-    font-size: 0.875rem;
-    color: #6c757d;
-}
-.room-actions {
-    display: flex;
-    gap: 0.5rem;
-}
-.btn-outline {
-    flex: 1;
-    padding: 0.5rem 1rem;
-    border: 2px solid #15803d;
-    background: transparent;
-    color: #15803d;
-    border-radius: 8px;
-    font-weight: 600;
-    transition: all 0.2s;
-}
-.btn-outline:hover {
-    background: #15803d;
-    color: white;
-}
-</style>
 @endpush
