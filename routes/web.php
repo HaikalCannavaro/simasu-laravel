@@ -54,6 +54,10 @@ Route::middleware([CekLoginApi::class])->group(function () {
 
     // Kalender
     Route::get('/kalender', [KalenderController::class, 'index'])->name('kalender');
+    Route::post('/kalender', [KalenderController::class, 'store'])->name('kalender.store');
+    Route::put('/kalender/{id}/status', [KalenderController::class, 'updateStatus'])->name('kalender.update-status');
+    Route::delete('/kalender/{id}', [KalenderController::class, 'destroy'])->name('kalender.destroy');
+    Route::get('/kalender/{id}', [KalenderController::class, 'show'])->name('kalender.show');
 
     // Profil
     Route::get('/profil', [ProfilController::class, 'index'])->name('profil');
