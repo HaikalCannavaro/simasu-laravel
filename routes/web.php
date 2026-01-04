@@ -20,6 +20,99 @@ Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.process');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// ===== TAMBAHKAN ROUTE TEST API DI SINI (SEBELUM MIDDLEWARE) =====
+Route::get('/test-api', function() {
+    $baseUrl = config('api.base_url');
+    
+    try {
+        $http = Http::withoutVerifying()->timeout(10);
+        
+        // Test bookings endpoint
+        $bookingsResponse = $http->get($baseUrl . '/api/bookings');
+        
+        $result = [
+            'api_base_url' => $baseUrl,
+            'bookings_endpoint' => $baseUrl . '/api/bookings',
+            'status' => $bookingsResponse->status(),
+            'successful' => $bookingsResponse->successful(),
+            'headers' => $bookingsResponse->headers(),
+            'raw_body' => $bookingsResponse->body(),
+        ];
+        
+        // Try to parse JSON
+        if ($bookingsResponse->successful()) {
+            try {
+                $json = $bookingsResponse->json();
+                $result['parsed_json'] = $json;
+                $result['is_array'] = is_array($json);
+                
+                // Check if wrapped in data key
+                if (isset($json['data'])) {
+                    $result['has_data_wrapper'] = true;
+                    $result['data_count'] = is_array($json['data']) ? count($json['data']) : 0;
+                    $result['first_booking'] = $json['data'][0] ?? null;
+                } else {
+                    $result['has_data_wrapper'] = false;
+                    $result['bookings_count'] = is_array($json) ? count($json) : 0;
+                    $result['first_booking'] = $json[0] ?? null;
+                }
+                
+                // Check fields in first booking
+                if (isset($result['first_booking']) && is_array($result['first_booking'])) {
+                    $result['available_fields'] = array_keys($result['first_booking']);
+                }
+            } catch (\Exception $e) {
+                $result['parse_error'] = $e->getMessage();
+            }
+        }
+        
+        return response()->json($result, 200, [], JSON_PRETTY_PRINT);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ], 500, [], JSON_PRETTY_PRINT);
+    }
+});
+
+Route::get('/test-api/inventory', function() {
+    $baseUrl = config('api.base_url');
+    
+    try {
+        $http = Http::withoutVerifying()->timeout(10);
+        $response = $http->get($baseUrl . '/api/inventory');
+        
+        return response()->json([
+            'status' => $response->status(),
+            'successful' => $response->successful(),
+            'data' => $response->json(),
+        ], 200, [], JSON_PRETTY_PRINT);
+        
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+});
+
+Route::get('/test-api/rooms', function() {
+    $baseUrl = config('api.base_url');
+    
+    try {
+        $http = Http::withoutVerifying()->timeout(10);
+        $response = $http->get($baseUrl . '/api/rooms');
+        
+        return response()->json([
+            'status' => $response->status(),
+            'successful' => $response->successful(),
+            'data' => $response->json(),
+        ], 200, [], JSON_PRETTY_PRINT);
+        
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+});
+// ===== AKHIR ROUTE TEST API =====
+
 Route::middleware([CekLoginApi::class])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');

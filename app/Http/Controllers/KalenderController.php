@@ -14,63 +14,144 @@ class KalenderController extends Controller
     public function index(Request $request)
     {
         $baseUrl = config('api.base_url');
-        $http = Http::withoutVerifying()->timeout(5);
-
+        $token = session('api_token'); // Get token from session
+        
         // Get current month or from request
         $month = $request->input('month', now()->month);
         $year = $request->input('year', now()->year);
         
         $currentDate = Carbon::create($year, $month, 1);
 
-        // Fetch bookings from API
-        $bookingsResponse = $http->get($baseUrl . '/api/bookings');
-        $inventoryResponse = $http->get($baseUrl . '/api/inventory');
-        $roomsResponse = $http->get($baseUrl . '/api/rooms');
-
-        $bookings = $bookingsResponse->successful() ? $bookingsResponse->json() : [];
-        $inventory = $inventoryResponse->successful() ? $inventoryResponse->json() : [];
-        $rooms = $roomsResponse->successful() ? $roomsResponse->json() : [];
-
-        // Debug log
-        \Log::info('Raw Bookings Data:', ['bookings' => $bookings]);
-
-        // Normalize inventory data
-        $inventory = collect($inventory)->map(function($item) {
-            return [
-                'id' => $item['id'] ?? 0,
-                'name' => $item['name'] ?? $item['nama_barang'] ?? '-',
-                'stock' => $item['stock'] ?? $item['jumlah'] ?? 0,
-                'category' => $item['category'] ?? $item['kategori'] ?? '-',
-            ];
-        })->toArray();
-
-        // Normalize rooms data
-        $rooms = collect($rooms)->map(function($item) {
-            $status = $item['status'] ?? 'tersedia';
-            $isAvailable = isset($item['is_available']) 
-                ? $item['is_available'] 
-                : ($status === 'tersedia' || $status === 'available');
+        try {
+            // Setup HTTP client with or without token
+            $http = Http::withoutVerifying()->timeout(10);
             
-            return [
-                'id' => $item['id'] ?? 0,
-                'name' => $item['name'] ?? $item['nama_ruangan'] ?? '-',
-                'status' => $status,
-                'is_available' => $isAvailable,
-                'capacity' => $item['capacity'] ?? $item['kapasitas'] ?? 0,
-            ];
-        })->toArray();
+            if ($token) {
+                $http = $http->withToken($token);
+            }
 
-        // Process bookings by date
-        $bookingsByDate = $this->processBookingsByDate($bookings, $currentDate);
+            \Log::info('=== KALENDER API DEBUG ===');
+            \Log::info('API Base URL: ' . $baseUrl);
+            \Log::info('Has Token: ' . ($token ? 'Yes' : 'No'));
 
-        // Get bookings for current month
-        $monthlyBookings = $this->getMonthlyBookings($bookings, $currentDate);
+            // Fetch bookings from API WITH TOKEN
+            $bookingsResponse = $http->get($baseUrl . '/api/bookings');
+            $inventoryResponse = Http::withoutVerifying()->timeout(5)->get($baseUrl . '/api/inventory');
+            $roomsResponse = Http::withoutVerifying()->timeout(5)->get($baseUrl . '/api/rooms');
 
-        // Debug log
-        \Log::info('Processed Bookings:', [
-            'bookingsByDate' => $bookingsByDate,
-            'monthlyBookings_count' => count($monthlyBookings)
-        ]);
+            \Log::info('Bookings Response Status: ' . $bookingsResponse->status());
+            \Log::info('Bookings Response Body: ' . $bookingsResponse->body());
+
+            $bookings = [];
+            $inventory = [];
+            $rooms = [];
+
+            // Parse bookings response
+            if ($bookingsResponse->successful()) {
+                try {
+                    $bookingsData = $bookingsResponse->json();
+                    \Log::info('Parsed Bookings JSON:', ['type' => gettype($bookingsData)]);
+                    
+                    // Method 1: Direct array
+                    if (is_array($bookingsData) && !isset($bookingsData['data']) && !isset($bookingsData['message'])) {
+                        $bookings = $bookingsData;
+                        \Log::info('Using direct array, count: ' . count($bookings));
+                    }
+                    // Method 2: Wrapped in 'data' key
+                    elseif (isset($bookingsData['data']) && is_array($bookingsData['data'])) {
+                        $bookings = $bookingsData['data'];
+                        \Log::info('Using data wrapper, count: ' . count($bookings));
+                    }
+                    // Method 3: Wrapped in 'bookings' key
+                    elseif (isset($bookingsData['bookings']) && is_array($bookingsData['bookings'])) {
+                        $bookings = $bookingsData['bookings'];
+                        \Log::info('Using bookings wrapper, count: ' . count($bookings));
+                    }
+                    // Method 4: Success wrapper
+                    elseif (isset($bookingsData['success']) && isset($bookingsData['data'])) {
+                        $bookings = is_array($bookingsData['data']) ? $bookingsData['data'] : [];
+                        \Log::info('Using success wrapper, count: ' . count($bookings));
+                    }
+                    
+                    \Log::info('Final bookings count: ' . count($bookings));
+                    if (count($bookings) > 0) {
+                        \Log::info('First booking sample:', ['booking' => $bookings[0]]);
+                        \Log::info('Available keys:', ['keys' => array_keys($bookings[0])]);
+                    }
+                    
+                } catch (\Exception $e) {
+                    \Log::error('Error parsing bookings JSON: ' . $e->getMessage());
+                }
+            } else {
+                \Log::warning('Bookings API failed with status: ' . $bookingsResponse->status());
+                \Log::warning('Response body: ' . $bookingsResponse->body());
+                
+                // If token is missing, show helpful message
+                if ($bookingsResponse->status() === 401) {
+                    \Log::error('Authentication required for /api/bookings endpoint');
+                }
+            }
+
+            // Parse inventory response
+            if ($inventoryResponse->successful()) {
+                $inventoryData = $inventoryResponse->json();
+                $inventory = isset($inventoryData['data']) ? $inventoryData['data'] : $inventoryData;
+            }
+
+            // Parse rooms response
+            if ($roomsResponse->successful()) {
+                $roomsData = $roomsResponse->json();
+                $rooms = isset($roomsData['data']) ? $roomsData['data'] : $roomsData;
+            }
+
+            // Normalize inventory data
+            $inventory = collect($inventory)->map(function($item) {
+                return [
+                    'id' => $item['id'] ?? 0,
+                    'name' => $item['name'] ?? $item['nama_barang'] ?? '-',
+                    'stock' => $item['stock'] ?? $item['jumlah'] ?? 0,
+                    'category' => $item['category'] ?? $item['kategori'] ?? '-',
+                ];
+            })->toArray();
+
+            // Normalize rooms data
+            $rooms = collect($rooms)->map(function($item) {
+                $status = $item['status'] ?? 'tersedia';
+                $isAvailable = isset($item['is_available']) 
+                    ? (bool)$item['is_available']
+                    : in_array(strtolower($status), ['tersedia', 'available', 'aktif', 'active']);
+                
+                return [
+                    'id' => $item['id'] ?? 0,
+                    'name' => $item['name'] ?? $item['nama_ruangan'] ?? '-',
+                    'status' => $status,
+                    'is_available' => $isAvailable,
+                    'capacity' => $item['capacity'] ?? $item['kapasitas'] ?? 0,
+                ];
+            })->toArray();
+
+            \Log::info('Processing ' . count($bookings) . ' bookings...');
+
+            // Process bookings by date
+            $bookingsByDate = $this->processBookingsByDate($bookings, $currentDate);
+
+            // Get bookings for current month
+            $monthlyBookings = $this->getMonthlyBookings($bookings, $currentDate);
+
+            \Log::info('=== FINAL RESULTS ===');
+            \Log::info('Bookings by Date count: ' . count($bookingsByDate));
+            \Log::info('Monthly Bookings count: ' . count($monthlyBookings));
+
+        } catch (\Exception $e) {
+            \Log::error('=== KALENDER ERROR ===');
+            \Log::error('Error message: ' . $e->getMessage());
+            \Log::error('Error trace: ' . $e->getTraceAsString());
+
+            $bookingsByDate = [];
+            $monthlyBookings = [];
+            $inventory = [];
+            $rooms = [];
+        }
 
         return view('kalender.index', [
             'currentDate' => $currentDate,
@@ -83,59 +164,116 @@ class KalenderController extends Controller
 
     /**
      * Process bookings and group by date
+     * IMPORTANT: This marks ALL dates in the booking range, not just start date
      */
     private function processBookingsByDate($bookings, $currentDate)
     {
         $bookingsByDate = [];
 
-        foreach ($bookings as $booking) {
-            try {
-                // Try multiple date field names
-                $startDateStr = $booking['start_time'] 
-                    ?? $booking['tanggal_mulai'] 
-                    ?? $booking['start_date'] 
-                    ?? null;
+        if (!is_array($bookings)) {
+            \Log::warning('processBookingsByDate: bookings is not array, type: ' . gettype($bookings));
+            return $bookingsByDate;
+        }
 
-                if (!$startDateStr) {
-                    \Log::warning('No start date found in booking:', $booking);
+        \Log::info('Processing bookings by date, total: ' . count($bookings));
+
+        foreach ($bookings as $index => $booking) {
+            try {
+                if (!is_array($booking)) {
+                    \Log::warning("Booking index $index is not array, type: " . gettype($booking));
                     continue;
                 }
 
-                $startDate = Carbon::parse($startDateStr);
-                
-                // Only include bookings in current month
-                if ($startDate->month == $currentDate->month && $startDate->year == $currentDate->year) {
-                    $dateKey = $startDate->format('Y-m-d');
-                    
-                    if (!isset($bookingsByDate[$dateKey])) {
-                        $bookingsByDate[$dateKey] = [
-                            'ruangan' => false,
-                            'barang' => false,
-                        ];
+                // Try ALL possible date field names for START date
+                $possibleDateFields = [
+                    'start_time', 'tanggal_mulai', 'start_date', 'startTime', 
+                    'tanggalMulai', 'date', 'booking_date', 'created_at',
+                    'start', 'mulai', 'waktu_mulai'
+                ];
+
+                $startDateStr = null;
+                $foundField = null;
+
+                foreach ($possibleDateFields as $field) {
+                    if (isset($booking[$field]) && !empty($booking[$field])) {
+                        $startDateStr = $booking[$field];
+                        $foundField = $field;
+                        break;
                     }
-
-                    // Determine booking type
-                    $type = $booking['type'] ?? 'inventory';
-                    
-                    // Check multiple ways to determine if it's a room booking
-                    $isRoomBooking = ($type === 'room') || 
-                                   isset($booking['room_id']) || 
-                                   (isset($booking['item_type']) && $booking['item_type'] === 'room');
-
-                    if ($isRoomBooking) {
-                        $bookingsByDate[$dateKey]['ruangan'] = true;
-                    } else {
-                        $bookingsByDate[$dateKey]['barang'] = true;
-                    }
-
-                    \Log::info('Booking processed:', [
-                        'date' => $dateKey,
-                        'type' => $type,
-                        'isRoom' => $isRoomBooking
-                    ]);
                 }
+
+                if (!$startDateStr) {
+                    \Log::warning("No date field found in booking $index", [
+                        'available_keys' => array_keys($booking),
+                        'booking_id' => $booking['id'] ?? 'unknown'
+                    ]);
+                    continue;
+                }
+
+                // Try ALL possible date field names for END date
+                $possibleEndFields = [
+                    'end_time', 'tanggal_selesai', 'end_date', 'endTime',
+                    'tanggalSelesai', 'end', 'selesai', 'waktu_selesai'
+                ];
+
+                $endDateStr = null;
+                foreach ($possibleEndFields as $field) {
+                    if (isset($booking[$field]) && !empty($booking[$field])) {
+                        $endDateStr = $booking[$field];
+                        break;
+                    }
+                }
+
+                // Parse dates
+                $startDate = Carbon::parse($startDateStr)->startOfDay();
+                $endDate = $endDateStr ? Carbon::parse($endDateStr)->startOfDay() : $startDate->copy();
+                
+                \Log::info("Booking $index date range: {$startDate->format('Y-m-d')} to {$endDate->format('Y-m-d')}");
+
+                // Determine booking type
+                $type = strtolower($booking['type'] ?? '');
+                $itemType = strtolower($booking['item_type'] ?? '');
+                
+                $isRoomBooking = 
+                    $type === 'room' || 
+                    $type === 'ruangan' ||
+                    $itemType === 'room' ||
+                    $itemType === 'ruangan' ||
+                    isset($booking['room_id']) || 
+                    isset($booking['ruangan_id']);
+
+                // Mark ALL dates in the range (including start and end)
+                $currentDatePointer = $startDate->copy();
+                
+                while ($currentDatePointer->lte($endDate)) {
+                    // Only process dates in the current month view
+                    if ($currentDatePointer->month == $currentDate->month && 
+                        $currentDatePointer->year == $currentDate->year) {
+                        
+                        $dateKey = $currentDatePointer->format('Y-m-d');
+                        
+                        if (!isset($bookingsByDate[$dateKey])) {
+                            $bookingsByDate[$dateKey] = [
+                                'ruangan' => false,
+                                'barang' => false,
+                            ];
+                        }
+
+                        if ($isRoomBooking) {
+                            $bookingsByDate[$dateKey]['ruangan'] = true;
+                            \Log::info("✓ Marked $dateKey as having RUANGAN booking");
+                        } else {
+                            $bookingsByDate[$dateKey]['barang'] = true;
+                            \Log::info("✓ Marked $dateKey as having BARANG booking");
+                        }
+                    }
+                    
+                    // Move to next day
+                    $currentDatePointer->addDay();
+                }
+                
             } catch (\Exception $e) {
-                \Log::error('Error processing booking date:', [
+                \Log::error("Error processing booking index $index:", [
                     'error' => $e->getMessage(),
                     'booking' => $booking
                 ]);
@@ -143,6 +281,7 @@ class KalenderController extends Controller
             }
         }
 
+        \Log::info('Total dates marked with bookings: ' . count($bookingsByDate));
         return $bookingsByDate;
     }
 
@@ -153,13 +292,29 @@ class KalenderController extends Controller
     {
         $monthlyBookings = [];
 
+        if (!is_array($bookings)) {
+            return $monthlyBookings;
+        }
+
         foreach ($bookings as $booking) {
             try {
-                // Try multiple date field names
-                $startDateStr = $booking['start_time'] 
-                    ?? $booking['tanggal_mulai'] 
-                    ?? $booking['start_date'] 
-                    ?? null;
+                if (!is_array($booking)) {
+                    continue;
+                }
+
+                // Try ALL possible date fields
+                $possibleDateFields = [
+                    'start_time', 'tanggal_mulai', 'start_date', 'startTime', 
+                    'tanggalMulai', 'date', 'booking_date', 'created_at'
+                ];
+
+                $startDateStr = null;
+                foreach ($possibleDateFields as $field) {
+                    if (isset($booking[$field]) && !empty($booking[$field])) {
+                        $startDateStr = $booking[$field];
+                        break;
+                    }
+                }
 
                 if (!$startDateStr) {
                     continue;
@@ -169,43 +324,62 @@ class KalenderController extends Controller
                 
                 if ($startDate->month == $currentDate->month && $startDate->year == $currentDate->year) {
                     // Parse end date
-                    $endDateStr = $booking['end_time'] 
-                        ?? $booking['tanggal_selesai'] 
-                        ?? $booking['end_date'] 
-                        ?? null;
+                    $possibleEndFields = [
+                        'end_time', 'tanggal_selesai', 'end_date', 'endTime',
+                        'tanggalSelesai', 'end', 'selesai'
+                    ];
+
+                    $endDateStr = null;
+                    foreach ($possibleEndFields as $field) {
+                        if (isset($booking[$field]) && !empty($booking[$field])) {
+                            $endDateStr = $booking[$field];
+                            break;
+                        }
+                    }
                     
                     $endDate = $endDateStr ? Carbon::parse($endDateStr) : null;
 
                     // Determine type
-                    $type = $booking['type'] ?? 'inventory';
-                    $isRoomBooking = ($type === 'room') || 
-                                   isset($booking['room_id']) || 
-                                   (isset($booking['item_type']) && $booking['item_type'] === 'room');
+                    $type = strtolower($booking['type'] ?? '');
+                    $itemType = strtolower($booking['item_type'] ?? '');
+                    
+                    $isRoomBooking = 
+                        $type === 'room' || 
+                        $type === 'ruangan' ||
+                        $itemType === 'room' ||
+                        $itemType === 'ruangan' ||
+                        isset($booking['room_id']) || 
+                        isset($booking['ruangan_id']);
+
+                    // Get item name
+                    $itemName = $booking['item_name'] 
+                        ?? $booking['nama_item'] 
+                        ?? $booking['name']
+                        ?? $booking['nama']
+                        ?? '-';
+
+                    // Get user name
+                    $userName = $booking['user_name'] 
+                        ?? $booking['nama_peminjam'] 
+                        ?? $booking['borrower']
+                        ?? $booking['notes']
+                        ?? '-';
 
                     $monthlyBookings[] = [
                         'id' => $booking['id'] ?? 0,
-                        'nama' => $booking['item_name'] 
-                            ?? $booking['nama_item'] 
-                            ?? $booking['name'] 
-                            ?? '-',
-                        'peminjam' => $booking['user_name'] 
-                            ?? $booking['nama_peminjam'] 
-                            ?? $booking['borrower'] 
-                            ?? '-',
+                        'nama' => $itemName,
+                        'peminjam' => $userName,
                         'tanggal' => $startDate->format('d'),
                         'tanggal_lengkap' => $startDate->format('d-m-Y'),
                         'tanggal_mulai' => $startDate->format('d-m-Y H:i'),
                         'tanggal_selesai' => $endDate ? $endDate->format('d-m-Y H:i') : '-',
                         'status' => $booking['status'] ?? 'pending',
                         'type' => $isRoomBooking ? 'room' : 'inventory',
-                        'quantity' => $booking['quantity'] ?? 1,
+                        'quantity' => $booking['quantity'] ?? $booking['jumlah'] ?? 1,
                     ];
                 }
             } catch (\Exception $e) {
-                \Log::error('Error processing monthly booking:', [
-                    'error' => $e->getMessage(),
-                    'booking' => $booking
-                ]);
+                \Log::error("Error processing monthly booking: " . $e->getMessage());
                 continue;
             }
         }
@@ -247,19 +421,17 @@ class KalenderController extends Controller
         // Prepare data for API
         $bookingData = [
             'type' => $validated['type'],
-            'item_id' => $validated['item_id'],
+            'item_id' => (int)$validated['item_id'],
             'item_name' => $validated['item_name'],
             'user_name' => $validated['user_name'],
             'start_time' => $startDateTime,
             'end_time' => $endDateTime,
-            'quantity' => $validated['quantity'] ?? 1,
+            'quantity' => (int)($validated['quantity'] ?? 1),
             'notes' => $validated['notes'] ?? '',
             'status' => 'pending',
         ];
 
-        \Log::info('Creating booking:', $bookingData);
-
-        // Send POST request to API with token
+        // Send POST request with token if available
         $response = $token 
             ? $http->withToken($token)->post($baseUrl . '/api/bookings', $bookingData)
             : $http->post($baseUrl . '/api/bookings', $bookingData);
@@ -269,13 +441,15 @@ class KalenderController extends Controller
                 ->with('success', 'Peminjaman/Sewa berhasil ditambahkan!');
         }
 
-        \Log::error('Booking creation failed:', [
-            'status' => $response->status(),
-            'body' => $response->body()
-        ]);
+        $errorMessage = 'Gagal menambahkan peminjaman';
+        
+        if ($response->status() >= 400) {
+            $responseData = $response->json();
+            $errorMessage .= ': ' . ($responseData['message'] ?? $responseData['error'] ?? 'Silakan coba lagi');
+        }
 
         return redirect()->route('kalender')
-            ->with('error', 'Gagal menambahkan peminjaman: ' . ($response->json()['message'] ?? 'Silakan coba lagi'));
+            ->with('error', $errorMessage);
     }
 
     /**
@@ -336,9 +510,12 @@ class KalenderController extends Controller
     public function show($id)
     {
         $baseUrl = config('api.base_url');
+        $token = session('api_token');
         $http = Http::withoutVerifying()->timeout(5);
 
-        $response = $http->get($baseUrl . '/api/bookings/' . $id);
+        $response = $token
+            ? $http->withToken($token)->get($baseUrl . '/api/bookings/' . $id)
+            : $http->get($baseUrl . '/api/bookings/' . $id);
 
         if ($response->successful()) {
             return response()->json($response->json());

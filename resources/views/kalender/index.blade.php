@@ -15,8 +15,22 @@
             Monthly Bookings: {{ count($monthlyBookings) }} items<br>
             Current Month: {{ $currentDate->format('F Y') }}<br>
             <details class="mt-2">
-                <summary style="cursor: pointer;">View Bookings Data</summary>
-                <pre style="font-size: 10px; max-height: 200px; overflow-y: auto;">{{ json_encode($bookingsByDate, JSON_PRETTY_PRINT) }}</pre>
+                <summary style="cursor: pointer;">View Bookings by Date</summary>
+                <div style="font-size: 10px; max-height: 200px; overflow-y: auto; background: #fff; padding: 10px; border-radius: 4px; margin-top: 8px;">
+                    @forelse($bookingsByDate as $date => $types)
+                        <div style="margin-bottom: 8px; padding: 4px; border-left: 3px solid #4CAF50;">
+                            <strong>{{ $date }}:</strong>
+                            @if($types['ruangan'])
+                                <span style="color: #2196F3;">🏢 Ruangan</span>
+                            @endif
+                            @if($types['barang'])
+                                <span style="color: #EF5350;">📦 Barang</span>
+                            @endif
+                        </div>
+                    @empty
+                        <em>No bookings by date</em>
+                    @endforelse
+                </div>
             </details>
         </small>
     </div>
@@ -81,26 +95,26 @@
                                         $hasBarang = $hasBooking && ($bookingsByDate[$dateKey]['barang'] ?? false);
                                     @endphp
                                     
-                                    <div class="p-2 h-100 d-flex flex-column" 
+                                    <div class="p-2 h-100 d-flex flex-column position-relative" 
                                          style="cursor: pointer;" 
                                          onclick="openBookingModal({{ $currentDay }}, '{{ $dateKey }}')">
-                                        <div class="d-flex justify-content-between align-items-start">
+                                        <div class="d-flex justify-content-between align-items-start mb-auto">
                                             <span class="fw-semibold">{{ $currentDay }}</span>
-                                            @if($hasBooking)
-                                                <div class="d-flex gap-1 flex-wrap">
-                                                    @if($hasBarang)
-                                                        <span class="badge rounded-circle p-0" 
-                                                              style="width: 8px; height: 8px; background-color: #EF5350;" 
-                                                              title="Ada peminjaman barang"></span>
-                                                    @endif
-                                                    @if($hasRuangan)
-                                                        <span class="badge rounded-circle p-0" 
-                                                              style="width: 8px; height: 8px; background-color: #2196F3;" 
-                                                              title="Ada sewa ruangan"></span>
-                                                    @endif
-                                                </div>
-                                            @endif
                                         </div>
+                                        @if($hasBooking)
+                                            <div class="d-flex gap-1 justify-content-center mt-auto">
+                                                @if($hasBarang)
+                                                    <span class="d-inline-block rounded-circle" 
+                                                          style="width: 6px; height: 6px; background-color: #EF5350;" 
+                                                          title="Ada peminjaman barang"></span>
+                                                @endif
+                                                @if($hasRuangan)
+                                                    <span class="d-inline-block rounded-circle" 
+                                                          style="width: 6px; height: 6px; background-color: #2196F3;" 
+                                                          title="Ada sewa ruangan"></span>
+                                                @endif
+                                            </div>
+                                        @endif
                                     </div>
                                     @php $currentDay++; @endphp
                                 @endif
@@ -117,13 +131,13 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="d-flex align-items-center gap-2 mb-2">
-                                    <span class="badge rounded-circle p-0" style="width: 12px; height: 12px; background-color: #EF5350;"></span>
+                                    <span class="d-inline-block rounded-circle" style="width: 10px; height: 10px; background-color: #EF5350;"></span>
                                     <small class="text-muted">Ada Peminjaman Barang</small>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="d-flex align-items-center gap-2 mb-2">
-                                    <span class="badge rounded-circle p-0" style="width: 12px; height: 12px; background-color: #2196F3;"></span>
+                                    <span class="d-inline-block rounded-circle" style="width: 10px; height: 10px; background-color: #2196F3;"></span>
                                     <small class="text-muted">Ada Sewa Ruangan</small>
                                 </div>
                             </div>
@@ -165,14 +179,16 @@
                                         <div class="d-flex align-items-center gap-2 mb-1">
                                             <h6 class="mb-0 fw-semibold">{{ $booking['nama'] }}</h6>
                                             @if($booking['type'] === 'room')
-                                                <span class="badge rounded-circle p-0" 
+                                                <span class="d-inline-block rounded-circle" 
                                                       style="width: 8px; height: 8px; background-color: #2196F3;"></span>
                                             @else
-                                                <span class="badge rounded-circle p-0" 
+                                                <span class="d-inline-block rounded-circle" 
                                                       style="width: 8px; height: 8px; background-color: #EF5350;"></span>
                                             @endif
                                         </div>
-                                        <small class="text-muted d-block mb-1">{{ $booking['peminjam'] }}</small>
+                                        <small class="text-muted d-block mb-1">
+                                            <i class="bi bi-person"></i> {{ $booking['peminjam'] }}
+                                        </small>
                                         <small class="text-muted d-block">
                                             <i class="bi bi-clock"></i> {{ $booking['tanggal_mulai'] }}<br>
                                             <i class="bi bi-clock-fill"></i> {{ $booking['tanggal_selesai'] }}
@@ -182,6 +198,19 @@
                                                 <i class="bi bi-box"></i> Jumlah: {{ $booking['quantity'] }}
                                             </small>
                                         @endif
+                                        @php
+                                            // Calculate duration in days
+                                            try {
+                                                $start = \Carbon\Carbon::parse($booking['tanggal_mulai']);
+                                                $end = \Carbon\Carbon::parse($booking['tanggal_selesai']);
+                                                $days = $start->diffInDays($end);
+                                                if ($days > 0) {
+                                                    echo '<small class="text-muted d-block mt-1"><i class="bi bi-calendar-range"></i> Durasi: ' . ($days + 1) . ' hari</small>';
+                                                }
+                                            } catch (\Exception $e) {
+                                                // Skip if date parsing fails
+                                            }
+                                        @endphp
                                     </div>
                                     <div class="text-center ms-2">
                                         <div class="bg-light rounded px-3 py-2 mb-2">
