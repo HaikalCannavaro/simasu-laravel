@@ -4,24 +4,51 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Carbon\Carbon;
 
 class RuanganController extends Controller
 {
     public function index()
     {
         $baseUrl = config('api.base_url');
-        $response = Http::withoutVerifying()->timeout(5)->get($baseUrl . '/api/rooms');
+        $token = session('api_token');
+        $responseRooms = Http::withoutVerifying()->withToken($token)->get($baseUrl . '/api/rooms');
+        $responseBookings = Http::withoutVerifying()->withToken($token)->get($baseUrl . '/api/bookings');
 
-        $rooms = collect(
-            $response->successful() ? $response->json() : []
-        )->map(function ($item) {
+        $bookings = $responseBookings->successful() ? collect($responseBookings->json()) : collect([]);
+        $rawRooms = $responseRooms->successful() ? $responseRooms->json() : [];
+
+        // 3. Waktu Sekarang
+        $now = Carbon::now();
+
+        $rooms = collect($rawRooms)->map(function ($item) use ($bookings, $now) {
+            $roomId = $item['id'] ?? 0;
+
+            $status = 'tersedia';
+
+            $isBooked = $bookings->contains(function ($booking) use ($roomId, $now) {
+                return 
+                    isset($booking['item_id'], $booking['type'], $booking['status']) &&
+                    $booking['type'] === 'room' &&
+                    $booking['item_id'] == $roomId &&
+                    $booking['status'] === 'approved' &&
+                    $now->between(
+                        Carbon::parse($booking['start_time']), 
+                        Carbon::parse($booking['end_time'])
+                    );
+            });
+
+            if ($isBooked) {
+                $status = 'dipakai';
+            }
+
             return [
-                'id'          => $item['id'] ?? 0,
+                'id'          => $roomId,
                 'name'        => $item['name'] ?? '',
                 'floor'       => $item['floor'] ?? '',
                 'description' => $item['facilities'] ?? '-', 
                 'capacity'    => $item['capacity'] ?? 0,
-                'status'      => 'tersedia' 
+                'status'      => $status
             ];
         });
 

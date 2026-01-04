@@ -160,19 +160,6 @@
                             required>
                     </div>
 
-                    {{-- Kategori --}}
-                    <div class="mb-3">
-                        <label for="kategori" class="form-label">Kategori <span class="text-danger">*</span></label>
-                        <select class="form-select" id="kategori" name="kategori" required>
-                            <option value="">Pilih Kategori</option>
-                            <option value="Pakaian Ibadah">Pakaian Ibadah</option>
-                            <option value="Furniture">Furniture</option>
-                            <option value="Alat Musik">Alat Musik</option>
-                            <option value="Elektronik">Elektronik</option>
-                            <option value="Perlengkapan">Perlengkapan</option>
-                        </select>
-                    </div>
-
                     {{-- Jumlah --}}
                     <div class="mb-3">
                         <label for="jumlah" class="form-label">Jumlah <span class="text-danger">*</span></label>
@@ -184,17 +171,6 @@
                             min="0"
                             placeholder="0"
                             required>
-                    </div>
-
-                    {{-- Deskripsi (BARU: Sesuai API) --}}
-                    <div class="mb-3">
-                        <label for="deskripsi" class="form-label">Deskripsi</label>
-                        <textarea 
-                            class="form-control" 
-                            id="deskripsi" 
-                            name="deskripsi" 
-                            rows="3" 
-                            placeholder="Contoh: Barang hibah tahun 2024, kondisi baik."></textarea>
                     </div>
                 </div>
 
@@ -216,7 +192,6 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Search functionality
         const searchInput = document.getElementById('searchInput');
         const tableBody = document.getElementById('tableBody');
 
@@ -239,37 +214,27 @@
             });
         }
 
-        // Edit button functionality
         document.querySelectorAll('.btn-edit').forEach(btn => {
             btn.addEventListener('click', function() {
                 const id = this.getAttribute('data-id');
                 const nama = this.getAttribute('data-nama');
-                const kategori = this.getAttribute('data-kategori');
                 const jumlah = this.getAttribute('data-jumlah');
-                const deskripsi = this.getAttribute('data-deskripsi'); // Ambil deskripsi
 
-                // Update modal title
                 document.getElementById('modalBarangLabel').textContent = 'Edit Barang';
 
-                // Update form action and method
                 const form = document.getElementById('formBarang');
                 form.action = `/inventaris/${id}`;
                 document.getElementById('formMethod').value = 'PUT';
 
-                // Fill form fields
                 document.getElementById('namaBarang').value = nama;
-                document.getElementById('kategori').value = kategori;
                 document.getElementById('jumlah').value = jumlah;
-                document.getElementById('deskripsi').value = deskripsi ? deskripsi : ''; // Isi deskripsi
                 document.getElementById('itemId').value = id;
 
-                // Show modal
                 const modal = new bootstrap.Modal(document.getElementById('modalBarang'));
                 modal.show();
             });
         });
 
-        // Reset modal when closed
         const modalElement = document.getElementById('modalBarang');
         if (modalElement) {
             modalElement.addEventListener('hidden.bs.modal', function() {
@@ -278,7 +243,6 @@
                 document.getElementById('formBarang').action = '{{ route("inventaris.store") }}';
                 document.getElementById('formMethod').value = 'POST';
                 document.getElementById('itemId').value = '';
-                // Field deskripsi otomatis kosong karena form.reset()
             });
         }
     });

@@ -10,8 +10,7 @@ class InventarisController extends Controller
     public function index()
     {
         $baseUrl = config('api.base_url');
-        
-        // GET Public Endpoint (Tidak butuh token)
+
         $http = Http::withoutVerifying()->timeout(5);
         $response = $http->get($baseUrl . '/api/inventory');
         
@@ -20,7 +19,6 @@ class InventarisController extends Controller
         )->map(function ($item) {
             return (object) [
                 'id'           => $item['id'],
-                // Mapping field dari API (name) ke tampilan Laravel
                 'nama_barang'  => $item['name'] ?? '-', 
                 'kategori'     => $item['category'] ?? '-',
                 'jumlah'       => $item['stock'] ?? 0,
@@ -38,18 +36,17 @@ class InventarisController extends Controller
             'nama_barang' => 'required|string|max:255',
             'kategori'    => 'required|string',
             'jumlah'      => 'required|integer|min:0',
-            'deskripsi'   => 'nullable|string' // Tambahan
+            'deskripsi'   => 'nullable|string'
         ]);
         
         $baseUrl = config('api.base_url');
-        $token = session('api_token'); // Ambil token dari session login
+        $token = session('api_token');
 
-        // POST Secure Endpoint (Butuh Token)
         $response = Http::withoutVerifying()->withToken($token)->post($baseUrl . '/api/inventory', [
             'name'        => $validated['nama_barang'],
             'category'    => $validated['kategori'],
             'stock'       => (int) $validated['jumlah'],
-            'description' => $request->deskripsi ?? '-' // Mapping ke API
+            'description' => $request->deskripsi ?? '-'
         ]);
         
         if ($response->successful()) {
@@ -70,11 +67,9 @@ class InventarisController extends Controller
         $baseUrl = config('api.base_url');
         $token = session('api_token');
 
-        // PUT Secure Endpoint (Butuh Token)
         $response = Http::withoutVerifying()
             ->withToken($token)
             ->put($baseUrl . '/api/inventory/' . $id, [
-                // Sesuai swagger inventoryRoutes: hanya name & stock yang di-update di endpoint ini
                 'name'  => $validated['nama_barang'],
                 'stock' => (int) $validated['jumlah'],
             ]);
@@ -91,8 +86,7 @@ class InventarisController extends Controller
     {
         $baseUrl = config('api.base_url');
         $token = session('api_token');
-        
-        // DELETE Secure Endpoint (Butuh Token)
+
         $response = Http::withoutVerifying()
             ->withToken($token)
             ->delete($baseUrl . '/api/inventory/' . $id);
@@ -103,15 +97,13 @@ class InventarisController extends Controller
         
         return redirect()->route('inventaris')->with('error', 'Gagal menghapus barang.');
     }
-    
-    // Untuk keperluan AJAX jika ada
+
     public function show($id)
     {
         $baseUrl = config('api.base_url');
         $response = Http::withoutVerifying()->get($baseUrl . '/api/inventory/' . $id);
         
         if ($response->successful()) {
-            // Mapping ulang agar frontend JS menerima field yang konsisten
             $data = $response->json();
             $mapped = [
                 'id' => $data['id'],

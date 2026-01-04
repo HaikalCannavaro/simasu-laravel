@@ -39,6 +39,14 @@
                 Profil
             </a>
         </li>
+
+        <li class="nav-item mt-3">
+            <a href="{{ route('permintaan.index') }}"
+                class="nav-link text-white text-decoration-underline hover-biru {{ request()->routeIs('permintaan*') ? 'active bg-success' : '' }}">
+
+                <span class="ms-4">Permintaan</span>
+            </a>
+        </li>
     </ul>
 
     <hr class="text-white">
@@ -50,3 +58,13 @@
         </button>
     </form>
 </aside>
+
+<style>
+    .hover-biru {
+        transition: all 0.5s ease;
+    }
+    .hover-biru:hover {
+        background-color: #0d6efd !important;
+        color: white !important;
+    }
+</style>

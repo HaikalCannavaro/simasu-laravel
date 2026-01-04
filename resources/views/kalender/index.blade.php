@@ -5,35 +5,15 @@
 @section('content')
 <div class="container-fluid px-4 py-3">
     
-    <!-- Debug Information (Remove after testing) -->
-    @if(config('app.debug'))
-    <div class="alert alert-warning alert-dismissible fade show" role="alert">
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        <strong>🔍 Debug Mode Active</strong><br>
-        <small>
-            Bookings by Date: {{ count($bookingsByDate) }} dates<br>
-            Monthly Bookings: {{ count($monthlyBookings) }} items<br>
-            Current Month: {{ $currentDate->format('F Y') }}<br>
-            <details class="mt-2">
-                <summary style="cursor: pointer;">View Bookings Data</summary>
-                <pre style="font-size: 10px; max-height: 200px; overflow-y: auto;">{{ json_encode($bookingsByDate, JSON_PRETTY_PRINT) }}</pre>
-            </details>
-        </small>
-    </div>
-    @endif
-    
     <div class="row mb-4">
         <div class="col-md-8">
-            <!-- Header -->
             <div class="mb-4">
                 <p class="text-muted small mb-1">Pantau ketersediaan inventaris dan ruangan</p>
                 <h4 class="fw-bold mb-0">Kalender Peminjaman & Sewa</h4>
             </div>
 
-            <!-- Calendar Card -->
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <!-- Calendar Header -->
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <h5 class="mb-0 fw-semibold">
                             {{ $currentDate->locale('id')->translatedFormat('F Y') }}
@@ -50,7 +30,6 @@
                         </div>
                     </div>
 
-                    <!-- Calendar Grid -->
                     <div class="calendar-container">
                         <div class="row g-0 border-bottom bg-light">
                             @foreach(['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'] as $day)
@@ -81,26 +60,26 @@
                                         $hasBarang = $hasBooking && ($bookingsByDate[$dateKey]['barang'] ?? false);
                                     @endphp
                                     
-                                    <div class="p-2 h-100 d-flex flex-column" 
+                                    <div class="p-2 h-100 d-flex flex-column position-relative" 
                                          style="cursor: pointer;" 
                                          onclick="openBookingModal({{ $currentDay }}, '{{ $dateKey }}')">
-                                        <div class="d-flex justify-content-between align-items-start">
+                                        <div class="d-flex justify-content-between align-items-start mb-auto">
                                             <span class="fw-semibold">{{ $currentDay }}</span>
-                                            @if($hasBooking)
-                                                <div class="d-flex gap-1 flex-wrap">
-                                                    @if($hasBarang)
-                                                        <span class="badge rounded-circle p-0" 
-                                                              style="width: 8px; height: 8px; background-color: #EF5350;" 
-                                                              title="Ada peminjaman barang"></span>
-                                                    @endif
-                                                    @if($hasRuangan)
-                                                        <span class="badge rounded-circle p-0" 
-                                                              style="width: 8px; height: 8px; background-color: #2196F3;" 
-                                                              title="Ada sewa ruangan"></span>
-                                                    @endif
-                                                </div>
-                                            @endif
                                         </div>
+                                        @if($hasBooking)
+                                            <div class="d-flex gap-1 justify-content-center mt-auto">
+                                                @if($hasBarang)
+                                                    <span class="d-inline-block rounded-circle" 
+                                                          style="width: 6px; height: 6px; background-color: #EF5350;" 
+                                                          title="Ada peminjaman barang"></span>
+                                                @endif
+                                                @if($hasRuangan)
+                                                    <span class="d-inline-block rounded-circle" 
+                                                          style="width: 6px; height: 6px; background-color: #2196F3;" 
+                                                          title="Ada sewa ruangan"></span>
+                                                @endif
+                                            </div>
+                                        @endif
                                     </div>
                                     @php $currentDay++; @endphp
                                 @endif
@@ -112,18 +91,17 @@
                         @endfor
                     </div>
 
-                    <!-- Legend -->
                     <div class="mt-4 pt-3 border-top">
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="d-flex align-items-center gap-2 mb-2">
-                                    <span class="badge rounded-circle p-0" style="width: 12px; height: 12px; background-color: #EF5350;"></span>
+                                    <span class="d-inline-block rounded-circle" style="width: 10px; height: 10px; background-color: #EF5350;"></span>
                                     <small class="text-muted">Ada Peminjaman Barang</small>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="d-flex align-items-center gap-2 mb-2">
-                                    <span class="badge rounded-circle p-0" style="width: 12px; height: 12px; background-color: #2196F3;"></span>
+                                    <span class="d-inline-block rounded-circle" style="width: 10px; height: 10px; background-color: #2196F3;"></span>
                                     <small class="text-muted">Ada Sewa Ruangan</small>
                                 </div>
                             </div>
@@ -133,7 +111,6 @@
             </div>
         </div>
 
-        <!-- Right Sidebar - Booking List -->
         <div class="col-md-4">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white border-0 py-3">
@@ -165,14 +142,16 @@
                                         <div class="d-flex align-items-center gap-2 mb-1">
                                             <h6 class="mb-0 fw-semibold">{{ $booking['nama'] }}</h6>
                                             @if($booking['type'] === 'room')
-                                                <span class="badge rounded-circle p-0" 
+                                                <span class="d-inline-block rounded-circle" 
                                                       style="width: 8px; height: 8px; background-color: #2196F3;"></span>
                                             @else
-                                                <span class="badge rounded-circle p-0" 
+                                                <span class="d-inline-block rounded-circle" 
                                                       style="width: 8px; height: 8px; background-color: #EF5350;"></span>
                                             @endif
                                         </div>
-                                        <small class="text-muted d-block mb-1">{{ $booking['peminjam'] }}</small>
+                                        <small class="text-muted d-block mb-1">
+                                            <i class="bi bi-person"></i> {{ $booking['peminjam'] }}
+                                        </small>
                                         <small class="text-muted d-block">
                                             <i class="bi bi-clock"></i> {{ $booking['tanggal_mulai'] }}<br>
                                             <i class="bi bi-clock-fill"></i> {{ $booking['tanggal_selesai'] }}
@@ -182,6 +161,17 @@
                                                 <i class="bi bi-box"></i> Jumlah: {{ $booking['quantity'] }}
                                             </small>
                                         @endif
+                                        @php
+                                            try {
+                                                $start = \Carbon\Carbon::parse($booking['tanggal_mulai']);
+                                                $end = \Carbon\Carbon::parse($booking['tanggal_selesai']);
+                                                $days = $start->diffInDays($end);
+                                                if ($days > 0) {
+                                                    echo '<small class="text-muted d-block mt-1"><i class="bi bi-calendar-range"></i> Durasi: ' . ($days + 1) . ' hari</small>';
+                                                }
+                                            } catch (\Exception $e) {
+                                            }
+                                        @endphp
                                     </div>
                                     <div class="text-center ms-2">
                                         <div class="bg-light rounded px-3 py-2 mb-2">
@@ -214,7 +204,6 @@
     </div>
 </div>
 
-<!-- Booking Modal -->
 <div class="modal fade" id="bookingModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -225,7 +214,6 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <!-- Type Selection -->
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Tipe <span class="text-danger">*</span></label>
                         <select class="form-select" name="type" id="bookingType" required onchange="loadItems()">
@@ -234,7 +222,6 @@
                         </select>
                     </div>
 
-                    <!-- Item Selection -->
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Pilih Item/Ruangan <span class="text-danger">*</span></label>
                         <select class="form-select" name="item_id" id="itemSelect" required onchange="updateItemName()">
@@ -243,20 +230,12 @@
                         <input type="hidden" name="item_name" id="itemName">
                     </div>
 
-                    <!-- Quantity (only for inventory) -->
                     <div class="mb-3" id="quantityField" style="display: none;">
                         <label class="form-label fw-semibold">Jumlah</label>
                         <input type="number" class="form-control" name="quantity" id="quantityInput" min="1" value="1">
                         <small class="text-muted" id="stockInfo"></small>
                     </div>
 
-                    <!-- User Name -->
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Peminjam/Penyewa <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="user_name" placeholder="Contoh: Acara Walimah" required>
-                    </div>
-
-                    <!-- Start Date & Time -->
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Tanggal Mulai <span class="text-danger">*</span></label>
@@ -268,7 +247,6 @@
                         </div>
                     </div>
 
-                    <!-- End Date & Time -->
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Tanggal Selesai <span class="text-danger">*</span></label>
@@ -280,7 +258,6 @@
                         </div>
                     </div>
 
-                    <!-- Notes -->
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Catatan (Opsional)</label>
                         <textarea class="form-control" name="notes" rows="3" placeholder="Tambahkan catatan..."></textarea>
@@ -317,7 +294,6 @@
     background-color: #f8f9fa;
 }
 
-/* Ensure bullets are visible */
 .badge.rounded-circle {
     display: inline-block;
     border: none;
@@ -327,7 +303,6 @@
 
 @push('scripts')
 <script>
-// Pass data from Laravel to JavaScript
 const inventory = @json($inventory);
 const rooms = @json($rooms);
 
@@ -349,8 +324,7 @@ function loadItems() {
     const itemSelect = document.getElementById('itemSelect');
     const quantityField = document.getElementById('quantityField');
     const stockInfo = document.getElementById('stockInfo');
-    
-    // Clear previous options
+
     itemSelect.innerHTML = '<option value="">-- Pilih --</option>';
     
     if (type === 'inventory') {
@@ -433,8 +407,7 @@ function updateItemName() {
     const stock = selectedOption.dataset.stock;
     
     document.getElementById('itemName').value = itemName;
-    
-    // Update stock info for inventory items
+
     if (stock) {
         const stockInfo = document.getElementById('stockInfo');
         const quantityInput = document.getElementById('quantityInput');
@@ -443,7 +416,6 @@ function updateItemName() {
     }
 }
 
-// Handle form submission
 document.addEventListener('DOMContentLoaded', function() {
     loadItems();
     
@@ -457,7 +429,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Show success/error messages with SweetAlert if available
 @if(session('success'))
     @if(class_exists('SweetAlert'))
     Swal.fire({

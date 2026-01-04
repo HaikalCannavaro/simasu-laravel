@@ -4,8 +4,6 @@
 
 @section('content')
 <div class="container-fluid px-4">
-
-    {{-- Header Section --}}
     <div class="d-flex justify-content-between align-items-center my-4">
         <div>
             <h1 class="h3 fw-bold text-dark mb-1">Sewa Ruangan</h1>
@@ -13,14 +11,12 @@
         </div>
 
         @if(session('user.role') == 'admin')
-        {{-- Tombol Tambah dengan Warna Hijau (Sesuai Gambar) --}}
         <button type="button" class="btn btn-success" onclick="openModal('add')">
             <i class="fas fa-plus me-1"></i> + Tambah Ruangan
         </button>
         @endif
     </div>
 
-    {{-- Grid Ruangan --}}
     <div class="row g-4">
         @forelse($rooms as $room)
         <div class="col-xl-4 col-md-6">
@@ -33,8 +29,13 @@
                                 <i class="fas fa-layer-group me-1"></i> {{ $room['floor'] }}
                             </span>
                         </div>
-                        {{-- Badge Status --}}
-                        <span class="badge bg-opacity-10 text-success bg-success px-3 py-2 rounded-pill">
+                        @php
+                            $badgeClass = $room['status'] === 'dipakai' 
+                                ? 'text-danger bg-danger' 
+                                : 'text-success bg-success';
+                        @endphp
+                        
+                        <span class="badge bg-opacity-10 {{ $badgeClass }} px-3 py-2 rounded-pill">
                             {{ ucfirst($room['status']) }}
                         </span>
                     </div>
@@ -50,21 +51,14 @@
 
                     <div class="d-flex gap-2">
                         @if(session('user.role') == 'admin')
-                            {{-- Admin Actions --}}
-        
-                            {{-- Tombol Edit (Biru) --}}
                             <button class="btn btn-primary flex-fill" onclick='editRoomLocal(@json($room))'>
                                 Edit
                             </button>
-        
-                            {{-- Tombol Delete (Merah) --}}
-                            {{-- Tambahkan 'flex-fill' di sini agar ukurannya sama dengan Edit --}}
                             <button class="btn btn-danger flex-fill" onclick="deleteRoom({{ $room['id'] }})">
                                 Delete <i class="fas fa-trash"></i>
                             </button>
         
                         @else
-                            {{-- User Actions --}}
                             <button class="btn btn-outline-secondary flex-fill" onclick="lihatDetail({{ $room['id'] }})">
                                 Detail
                             </button>
@@ -87,7 +81,6 @@
     </div>
 </div>
 
-{{-- Modal Form (Menggunakan Bootstrap Modal Standard) --}}
 <div class="modal fade" id="roomModal" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
@@ -124,7 +117,6 @@
                         <input type="number" id="capacity" class="form-control" required min="1" placeholder="0">
                     </div>
 
-                    {{-- Note: Status dihilangkan karena Controller tidak menyimpan status (default 'tersedia' di backend) --}}
                 </div>
                 <div class="modal-footer border-top-0 pt-0">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
@@ -135,7 +127,6 @@
     </div>
 </div>
 
-{{-- Modal Detail --}}
 <div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
@@ -144,7 +135,6 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="detailContent">
-                {{-- Content injected via JS --}}
             </div>
         </div>
     </div>
@@ -202,8 +192,6 @@
 
         let url = isEditMode ? `/ruangan/${id}` : '/ruangan';
         let method = isEditMode ? 'PUT' : 'POST';
-
-        // UI Loading
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...';
 
@@ -270,7 +258,7 @@
             .catch(e => console.error(e));
     }
 
-    // 5. Lihat Detail (Read Only)
+    // 5. Lihat Detail
     function lihatDetail(id) {
         fetch(`/ruangan/${id}`).then(r => r.json()).then(room => {
             const content = `

@@ -8,6 +8,7 @@ use App\Http\Controllers\KalenderController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProfilController;
 use App\Http\Middleware\CekLoginApi;
+use App\Http\Controllers\PermintaanController;
 
 Route::get('/', function () {
     if (session()->has('api_token')) {
@@ -64,4 +65,9 @@ Route::middleware([CekLoginApi::class])->group(function () {
     Route::put('/profil/update', [ProfilController::class, 'update'])->name('profil.update');
     Route::put('/profil/password', [ProfilController::class, 'updatePassword'])->name('profil.password');
     Route::post('/profil/photo', [ProfilController::class, 'updatePhoto'])->name('profil.photo');
+
+
+    // Permintaan Inventaris
+    Route::get('/permintaan', [PermintaanController::class, 'index'])->name('permintaan.index');
+    Route::put('/permintaan/{id}/status', [PermintaanController::class, 'updateStatus'])->name('permintaan.update');
 });
