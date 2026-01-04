@@ -44,6 +44,7 @@ class KalenderController extends Controller
                 'capacity' => $item['capacity'] ?? $item['kapasitas'] ?? 0,
             ];
         })->toArray();
+
         $bookingsByDate = $this->processBookingsByDate($bookings, $currentDate);
 
         $monthlyBookings = $this->getMonthlyBookings($bookings, $currentDate);
@@ -63,7 +64,16 @@ class KalenderController extends Controller
 
         foreach ($bookings as $booking) {
             try {
-                $startDate = Carbon::parse($booking['start_time'] ?? $booking['tanggal_mulai']);
+                $startTime = $booking['start_time'] ?? 
+                            $booking['tanggal_mulai'] ?? 
+                            $booking['start_date'] ?? 
+                            null;
+                
+                if (!$startTime) {
+                    continue;
+                }
+                
+                $startDate = Carbon::parse($startTime);
                 
                 if ($startDate->month == $currentDate->month && $startDate->year == $currentDate->year) {
                     $dateKey = $startDate->format('Y-m-d');
@@ -75,14 +85,16 @@ class KalenderController extends Controller
                         ];
                     }
 
-                    $type = $booking['type'] ?? 'inventory';
-                    if ($type === 'room' || isset($booking['room_id'])) {
+                    $type = $booking['type'] ?? $booking['tipe'] ?? 'inventory';
+                    
+                    if ($type === 'room' || isset($booking['room_id']) || isset($booking['ruangan_id'])) {
                         $bookingsByDate[$dateKey]['ruangan'] = true;
                     } else {
                         $bookingsByDate[$dateKey]['barang'] = true;
                     }
                 }
             } catch (\Exception $e) {
+                \Log::error('Error processing booking: ' . $e->getMessage(), ['booking' => $booking]);
                 continue;
             }
         }
@@ -117,7 +129,6 @@ class KalenderController extends Controller
                 continue;
             }
         }
-
         usort($monthlyBookings, function($a, $b) {
             return strcmp($b['tanggal'], $a['tanggal']);
         });
@@ -143,8 +154,8 @@ class KalenderController extends Controller
         $baseUrl = config('api.base_url');
         $http = Http::withoutVerifying()->timeout(10);
 
-        $startDateTime = $validated['start_date'] . ' ' . $validated['start_time'];
-        $endDateTime = $validated['end_date'] . ' ' . $validated['end_time'];
+        $startDateTime = Carbon::parse($validated['start_date'] . ' ' . $validated['start_time'])->format('Y-m-d H:i');
+        $endDateTime = Carbon::parse($validated['end_date'] . ' ' . $validated['end_time'])->format('Y-m-d H:i');
 
         $bookingData = [
             'type' => $validated['type'],
@@ -161,12 +172,25 @@ class KalenderController extends Controller
         $response = $http->post($baseUrl . '/api/bookings', $bookingData);
 
         if ($response->successful()) {
-            return redirect()->route('kalender')
-                ->with('success', 'Peminjaman/Sewa berhasil ditambahkan!');
+            $startDate = Carbon::parse($validated['start_date']);
+            
+            return redirect()->route('kalender', [
+                'month' => $startDate->month,
+                'year' => $startDate->year
+            ])->with('success', 'Peminjaman/Sewa berhasil ditambahkan!');
+        }
+
+        $errorMessage = 'Gagal menambahkan peminjaman. Silakan coba lagi.';
+        try {
+            $responseData = $response->json();
+            if (isset($responseData['message'])) {
+                $errorMessage = $responseData['message'];
+            }
+        } catch (\Exception $e) {
         }
 
         return redirect()->route('kalender')
-            ->with('error', 'Gagal menambahkan peminjaman. Silakan coba lagi.');
+            ->with('error', $errorMessage);
     }
 
     public function updateStatus(Request $request, $id)
