@@ -11,12 +11,13 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         <strong>🔍 Debug Mode Active</strong><br>
         <small>
-            Total Bookings in Array: {{ count($bookingsByDate) }}<br>
-            Monthly Bookings Count: {{ count($monthlyBookings) }}<br>
+            Bookings by Date: {{ count($bookingsByDate) }} dates<br>
+            Monthly Bookings: {{ count($monthlyBookings) }} items<br>
             Current Month: {{ $currentDate->format('F Y') }}<br>
-            <a href="/test-api" target="_blank" class="btn btn-sm btn-primary mt-2">Test API Connection</a>
-            <br><br>
-            Check Laravel log file: <code>storage/logs/laravel.log</code>
+            <details class="mt-2">
+                <summary style="cursor: pointer;">View Bookings Data</summary>
+                <pre style="font-size: 10px; max-height: 200px; overflow-y: auto;">{{ json_encode($bookingsByDate, JSON_PRETTY_PRINT) }}</pre>
+            </details>
         </small>
     </div>
     @endif
@@ -76,8 +77,8 @@
                                     @php
                                         $dateKey = $currentDate->copy()->day($currentDay)->format('Y-m-d');
                                         $hasBooking = isset($bookingsByDate[$dateKey]);
-                                        $hasRuangan = $hasBooking && $bookingsByDate[$dateKey]['ruangan'];
-                                        $hasBarang = $hasBooking && $bookingsByDate[$dateKey]['barang'];
+                                        $hasRuangan = $hasBooking && ($bookingsByDate[$dateKey]['ruangan'] ?? false);
+                                        $hasBarang = $hasBooking && ($bookingsByDate[$dateKey]['barang'] ?? false);
                                     @endphp
                                     
                                     <div class="p-2 h-100 d-flex flex-column" 
@@ -86,12 +87,16 @@
                                         <div class="d-flex justify-content-between align-items-start">
                                             <span class="fw-semibold">{{ $currentDay }}</span>
                                             @if($hasBooking)
-                                                <div class="d-flex gap-1">
+                                                <div class="d-flex gap-1 flex-wrap">
                                                     @if($hasBarang)
-                                                        <span class="badge bg-danger" style="width: 8px; height: 8px; padding: 0; border-radius: 50%;"></span>
+                                                        <span class="badge rounded-circle p-0" 
+                                                              style="width: 8px; height: 8px; background-color: #EF5350;" 
+                                                              title="Ada peminjaman barang"></span>
                                                     @endif
                                                     @if($hasRuangan)
-                                                        <span class="badge bg-primary" style="width: 8px; height: 8px; padding: 0; border-radius: 50%;"></span>
+                                                        <span class="badge rounded-circle p-0" 
+                                                              style="width: 8px; height: 8px; background-color: #2196F3;" 
+                                                              title="Ada sewa ruangan"></span>
                                                     @endif
                                                 </div>
                                             @endif
@@ -112,14 +117,14 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="d-flex align-items-center gap-2 mb-2">
-                                    <span class="badge bg-danger" style="width: 12px; height: 12px; padding: 0; border-radius: 50%;"></span>
-                                    <small class="text-muted">Ada Peminjaman</small>
+                                    <span class="badge rounded-circle p-0" style="width: 12px; height: 12px; background-color: #EF5350;"></span>
+                                    <small class="text-muted">Ada Peminjaman Barang</small>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="d-flex align-items-center gap-2 mb-2">
-                                    <span class="badge bg-primary" style="width: 12px; height: 12px; padding: 0; border-radius: 50%;"></span>
-                                    <small class="text-muted">Ada Sewa Ruang</small>
+                                    <span class="badge rounded-circle p-0" style="width: 12px; height: 12px; background-color: #2196F3;"></span>
+                                    <small class="text-muted">Ada Sewa Ruangan</small>
                                 </div>
                             </div>
                         </div>
@@ -140,15 +145,14 @@
                             <i class="bi bi-calendar-x fs-1 mb-2 d-block"></i>
                             <p class="mb-0">Belum ada peminjaman bulan ini</p>
                             @if(config('app.debug'))
-                                <div class="alert alert-info mt-3 text-start">
-                                    <strong>Troubleshooting:</strong>
-                                    <ol class="mb-0 mt-2" style="font-size: 0.85rem;">
-                                        <li>Pastikan API endpoint <code>/api/bookings</code> mengembalikan data</li>
-                                        <li>Cek format tanggal di API (harus: YYYY-MM-DD HH:mm atau YYYY-MM-DD)</li>
+                                <div class="alert alert-info mt-3 text-start" style="font-size: 0.85rem;">
+                                    <strong>🔍 Troubleshooting:</strong>
+                                    <ol class="mb-0 mt-2">
+                                        <li>Cek endpoint: <code>{{ config('api.base_url') }}/api/bookings</code></li>
+                                        <li>Format tanggal API: <code>YYYY-MM-DD HH:mm</code></li>
                                         <li>Field yang dicari: <code>start_time</code>, <code>tanggal_mulai</code>, atau <code>start_date</code></li>
-                                        <li>Field type harus: <code>room</code> atau <code>inventory</code></li>
-                                        <li>Lihat Laravel log: <code>tail -f storage/logs/laravel.log</code></li>
-                                        <li><a href="/test-api" target="_blank">Test API Connection</a></li>
+                                        <li>Field type: <code>room</code> atau <code>inventory</code></li>
+                                        <li>Lihat log: <code>tail -f storage/logs/laravel.log</code></li>
                                     </ol>
                                 </div>
                             @endif
@@ -158,28 +162,44 @@
                             <div class="p-3 border-bottom booking-item">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
                                     <div class="flex-grow-1">
-                                        <h6 class="mb-1 fw-semibold">{{ $booking['nama'] }}</h6>
+                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                            <h6 class="mb-0 fw-semibold">{{ $booking['nama'] }}</h6>
+                                            @if($booking['type'] === 'room')
+                                                <span class="badge rounded-circle p-0" 
+                                                      style="width: 8px; height: 8px; background-color: #2196F3;"></span>
+                                            @else
+                                                <span class="badge rounded-circle p-0" 
+                                                      style="width: 8px; height: 8px; background-color: #EF5350;"></span>
+                                            @endif
+                                        </div>
                                         <small class="text-muted d-block mb-1">{{ $booking['peminjam'] }}</small>
                                         <small class="text-muted d-block">
-                                            Mulai: {{ $booking['tanggal_mulai'] }}<br>
-                                            Selesai: {{ $booking['tanggal_selesai'] }}
+                                            <i class="bi bi-clock"></i> {{ $booking['tanggal_mulai'] }}<br>
+                                            <i class="bi bi-clock-fill"></i> {{ $booking['tanggal_selesai'] }}
                                         </small>
+                                        @if($booking['type'] === 'inventory' && $booking['quantity'] > 1)
+                                            <small class="text-muted d-block mt-1">
+                                                <i class="bi bi-box"></i> Jumlah: {{ $booking['quantity'] }}
+                                            </small>
+                                        @endif
                                     </div>
                                     <div class="text-center ms-2">
-                                        <div class="bg-light rounded px-3 py-2">
+                                        <div class="bg-light rounded px-3 py-2 mb-2">
                                             <div class="fw-bold text-primary" style="font-size: 1.2rem;">
                                                 {{ $booking['tanggal'] }}
                                             </div>
                                         </div>
-                                        <span class="badge mt-2 
+                                        <span class="badge 
                                             @if($booking['status'] == 'approved') bg-success
-                                            @elseif($booking['status'] == 'pending') bg-warning
+                                            @elseif($booking['status'] == 'pending') bg-warning text-dark
                                             @elseif($booking['status'] == 'rejected') bg-danger
+                                            @elseif($booking['status'] == 'completed') bg-info
                                             @else bg-secondary
                                             @endif">
                                             @if($booking['status'] == 'approved') Disetujui
                                             @elseif($booking['status'] == 'pending') Menunggu
                                             @elseif($booking['status'] == 'rejected') Ditolak
+                                            @elseif($booking['status'] == 'completed') Selesai
                                             @else {{ ucfirst($booking['status']) }}
                                             @endif
                                         </span>
@@ -196,9 +216,9 @@
 
 <!-- Booking Modal -->
 <div class="modal fade" id="bookingModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <form action="{{ route('kalender.store') }}" method="POST">
+            <form action="{{ route('kalender.store') }}" method="POST" id="bookingForm">
                 @csrf
                 <div class="modal-header">
                     <h5 class="modal-title">Tambah Peminjaman/Sewa</h5>
@@ -207,7 +227,7 @@
                 <div class="modal-body">
                     <!-- Type Selection -->
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Tipe</label>
+                        <label class="form-label fw-semibold">Tipe <span class="text-danger">*</span></label>
                         <select class="form-select" name="type" id="bookingType" required onchange="loadItems()">
                             <option value="inventory">Pinjam Barang</option>
                             <option value="room">Sewa Ruangan</option>
@@ -216,7 +236,7 @@
 
                     <!-- Item Selection -->
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Pilih Item/Ruangan</label>
+                        <label class="form-label fw-semibold">Pilih Item/Ruangan <span class="text-danger">*</span></label>
                         <select class="form-select" name="item_id" id="itemSelect" required onchange="updateItemName()">
                             <option value="">-- Pilih --</option>
                         </select>
@@ -226,23 +246,24 @@
                     <!-- Quantity (only for inventory) -->
                     <div class="mb-3" id="quantityField" style="display: none;">
                         <label class="form-label fw-semibold">Jumlah</label>
-                        <input type="number" class="form-control" name="quantity" min="1" value="1">
+                        <input type="number" class="form-control" name="quantity" id="quantityInput" min="1" value="1">
+                        <small class="text-muted" id="stockInfo"></small>
                     </div>
 
                     <!-- User Name -->
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Peminjam/Penyewa</label>
+                        <label class="form-label fw-semibold">Peminjam/Penyewa <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" name="user_name" placeholder="Contoh: Acara Walimah" required>
                     </div>
 
                     <!-- Start Date & Time -->
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Tanggal Mulai</label>
+                            <label class="form-label fw-semibold">Tanggal Mulai <span class="text-danger">*</span></label>
                             <input type="date" class="form-control" name="start_date" id="startDate" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Jam Mulai</label>
+                            <label class="form-label fw-semibold">Jam Mulai <span class="text-danger">*</span></label>
                             <input type="time" class="form-control" name="start_time" value="08:00" required>
                         </div>
                     </div>
@@ -250,11 +271,11 @@
                     <!-- End Date & Time -->
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Tanggal Selesai</label>
+                            <label class="form-label fw-semibold">Tanggal Selesai <span class="text-danger">*</span></label>
                             <input type="date" class="form-control" name="end_date" id="endDate" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Jam Selesai</label>
+                            <label class="form-label fw-semibold">Jam Selesai <span class="text-danger">*</span></label>
                             <input type="time" class="form-control" name="end_time" value="17:00" required>
                         </div>
                     </div>
@@ -267,7 +288,9 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success" id="submitBookingBtn">Simpan</button>
+                    <button type="submit" class="btn btn-success" id="submitBookingBtn">
+                        <i class="bi bi-save"></i> Simpan
+                    </button>
                 </div>
             </form>
         </div>
@@ -278,12 +301,26 @@
 
 @push('styles')
 <style>
+.calendar-day {
+    transition: background-color 0.2s ease;
+}
+
 .calendar-day:hover {
     background-color: #f8f9fa;
 }
 
+.booking-item {
+    transition: background-color 0.2s ease;
+}
+
 .booking-item:hover {
     background-color: #f8f9fa;
+}
+
+/* Ensure bullets are visible */
+.badge.rounded-circle {
+    display: inline-block;
+    border: none;
 }
 </style>
 @endpush
@@ -294,8 +331,10 @@
 const inventory = @json($inventory);
 const rooms = @json($rooms);
 
-console.log('Inventory data:', inventory);
-console.log('Rooms data:', rooms);
+console.log('📦 Inventory data:', inventory);
+console.log('🏢 Rooms data:', rooms);
+console.log('📅 Bookings by date:', @json($bookingsByDate));
+console.log('📋 Monthly bookings:', @json($monthlyBookings));
 
 function openBookingModal(day, dateKey) {
     const modal = new bootstrap.Modal(document.getElementById('bookingModal'));
@@ -309,6 +348,7 @@ function loadItems() {
     const type = document.getElementById('bookingType').value;
     const itemSelect = document.getElementById('itemSelect');
     const quantityField = document.getElementById('quantityField');
+    const stockInfo = document.getElementById('stockInfo');
     
     // Clear previous options
     itemSelect.innerHTML = '<option value="">-- Pilih --</option>';
@@ -317,16 +357,27 @@ function loadItems() {
         quantityField.style.display = 'block';
         
         if (inventory && inventory.length > 0) {
+            let hasAvailable = false;
             inventory.forEach(item => {
-                const stock = parseInt(item.stock) || parseInt(item.jumlah) || 0;
+                const stock = parseInt(item.stock) || 0;
                 if (stock > 0) {
+                    hasAvailable = true;
                     const option = document.createElement('option');
                     option.value = item.id;
                     option.textContent = `${item.name} (Stok: ${stock})`;
                     option.dataset.name = item.name;
+                    option.dataset.stock = stock;
                     itemSelect.appendChild(option);
                 }
             });
+            
+            if (!hasAvailable) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Tidak ada barang dengan stok tersedia';
+                option.disabled = true;
+                itemSelect.appendChild(option);
+            }
         } else {
             const option = document.createElement('option');
             option.value = '';
@@ -336,26 +387,29 @@ function loadItems() {
         }
     } else {
         quantityField.style.display = 'none';
+        stockInfo.textContent = '';
         
         if (rooms && rooms.length > 0) {
+            let hasAvailable = false;
             rooms.forEach(room => {
-                const isAvailable = room.is_available === true || room.is_available === 1 || 
-                                  room.status === 'tersedia' || room.status === 'available';
-                
-                console.log('Room:', room.name, 'Available:', isAvailable);
+                const isAvailable = room.is_available === true || 
+                                  room.is_available === 1 || 
+                                  room.is_available === '1' ||
+                                  room.status === 'tersedia' || 
+                                  room.status === 'available';
                 
                 if (isAvailable) {
+                    hasAvailable = true;
                     const option = document.createElement('option');
                     option.value = room.id;
-                    const capacityText = room.capacity ? ` (Kapasitas: ${room.capacity})` : '';
+                    const capacityText = room.capacity ? ` (Kapasitas: ${room.capacity} orang)` : '';
                     option.textContent = `${room.name}${capacityText}`;
                     option.dataset.name = room.name;
                     itemSelect.appendChild(option);
                 }
             });
             
-            // Check if no available rooms were added
-            if (itemSelect.options.length === 1) {
+            if (!hasAvailable) {
                 const option = document.createElement('option');
                 option.value = '';
                 option.textContent = 'Tidak ada ruangan tersedia';
@@ -375,14 +429,25 @@ function loadItems() {
 function updateItemName() {
     const itemSelect = document.getElementById('itemSelect');
     const selectedOption = itemSelect.options[itemSelect.selectedIndex];
-    document.getElementById('itemName').value = selectedOption.dataset.name || '';
+    const itemName = selectedOption.dataset.name || '';
+    const stock = selectedOption.dataset.stock;
+    
+    document.getElementById('itemName').value = itemName;
+    
+    // Update stock info for inventory items
+    if (stock) {
+        const stockInfo = document.getElementById('stockInfo');
+        const quantityInput = document.getElementById('quantityInput');
+        stockInfo.textContent = `Stok tersedia: ${stock}`;
+        quantityInput.max = stock;
+    }
 }
 
 // Handle form submission
 document.addEventListener('DOMContentLoaded', function() {
     loadItems();
     
-    const bookingForm = document.querySelector('#bookingModal form');
+    const bookingForm = document.getElementById('bookingForm');
     if (bookingForm) {
         bookingForm.addEventListener('submit', function(e) {
             const submitBtn = document.getElementById('submitBookingBtn');
@@ -392,8 +457,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Show success/error messages
+// Show success/error messages with SweetAlert if available
 @if(session('success'))
+    @if(class_exists('SweetAlert'))
     Swal.fire({
         icon: 'success',
         title: 'Berhasil!',
@@ -401,27 +467,25 @@ document.addEventListener('DOMContentLoaded', function() {
         timer: 2000,
         showConfirmButton: false
     }).then(() => {
-        // Reload page to show updated data
         window.location.reload();
     });
+    @else
+    alert('{{ session('success') }}');
+    window.location.reload();
+    @endif
 @endif
 
 @if(session('error'))
+    @if(class_exists('SweetAlert'))
     Swal.fire({
         icon: 'error',
         title: 'Gagal!',
         text: '{{ session('error') }}',
         showConfirmButton: true
     });
-@endif
-
-@if(config('app.debug'))
-    console.log('=== KALENDER DEBUG INFO ===');
-    console.log('Inventory Items:', inventory);
-    console.log('Rooms:', rooms);
-    console.log('Bookings by Date:', @json($bookingsByDate));
-    console.log('Monthly Bookings:', @json($monthlyBookings));
-    console.log('==========================');
+    @else
+    alert('{{ session('error') }}');
+    @endif
 @endif
 </script>
 @endpush
