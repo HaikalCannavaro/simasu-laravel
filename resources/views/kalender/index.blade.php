@@ -67,7 +67,7 @@
                                             @if($hasBooking)
                                                 <div class="d-flex gap-1">
                                                     @if($hasBarang)
-                                                        <span class="badge bg-success bg-opacity-50" style="width: 8px; height: 8px; padding: 0; border-radius: 50%;"></span>
+                                                        <span class="badge bg-danger" style="width: 8px; height: 8px; padding: 0; border-radius: 50%;"></span>
                                                     @endif
                                                     @if($hasRuangan)
                                                         <span class="badge bg-primary" style="width: 8px; height: 8px; padding: 0; border-radius: 50%;"></span>
@@ -90,7 +90,7 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="d-flex align-items-center gap-2 mb-2">
-                                    <span class="badge bg-success bg-opacity-50" style="width: 12px; height: 12px; padding: 0; border-radius: 50%;"></span>
+                                    <span class="badge bg-danger" style="width: 12px; height: 12px; padding: 0; border-radius: 50%;"></span>
                                     <small class="text-muted">Ada Peminjaman</small>
                                 </div>
                             </div>
@@ -221,7 +221,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success">Simpan</button>
+                    <button type="submit" class="btn btn-success" id="submitBookingBtn">Simpan</button>
                 </div>
             </form>
         </div>
@@ -331,6 +331,37 @@ function updateItemName() {
 
 document.addEventListener('DOMContentLoaded', function() {
     loadItems();
+    
+    const bookingForm = document.querySelector('#bookingModal form');
+    if (bookingForm) {
+        bookingForm.addEventListener('submit', function(e) {
+            const submitBtn = document.getElementById('submitBookingBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Menyimpan...';
+        });
+    }
 });
+
+@if(session('success'))
+    Swal.fire({
+        icon: 'success',
+        title: 'Berhasil!',
+        text: '{{ session('success') }}',
+        timer: 2000,
+        showConfirmButton: false
+    }).then(() => {
+        window.location.reload();
+    });
+@endif
+
+@if(session('error'))
+    Swal.fire({
+        icon: 'error',
+        title: 'Gagal!',
+        text: '{{ session('error') }}',
+        timer: 3000,
+        showConfirmButton: true
+    });
+@endif
 </script>
 @endpush
