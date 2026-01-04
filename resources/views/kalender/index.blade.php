@@ -247,6 +247,9 @@
 const inventory = @json($inventory);
 const rooms = @json($rooms);
 
+console.log('Inventory data:', inventory);
+console.log('Rooms data:', rooms);
+
 function openBookingModal(day, dateKey) {
     const modal = new bootstrap.Modal(document.getElementById('bookingModal'));
     document.getElementById('startDate').value = dateKey;
@@ -264,26 +267,59 @@ function loadItems() {
     
     if (type === 'inventory') {
         quantityField.style.display = 'block';
-        inventory.forEach(item => {
-            if (item.stock > 0 || item.jumlah > 0) {
-                const option = document.createElement('option');
-                option.value = item.id;
-                option.textContent = item.name || item.nama_barang;
-                option.dataset.name = item.name || item.nama_barang;
-                itemSelect.appendChild(option);
-            }
-        });
+        
+        if (inventory && inventory.length > 0) {
+            inventory.forEach(item => {
+                const stock = parseInt(item.stock) || parseInt(item.jumlah) || 0;
+                if (stock > 0) {
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.textContent = `${item.name} (Stok: ${stock})`;
+                    option.dataset.name = item.name;
+                    itemSelect.appendChild(option);
+                }
+            });
+        } else {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Tidak ada barang tersedia';
+            option.disabled = true;
+            itemSelect.appendChild(option);
+        }
     } else {
         quantityField.style.display = 'none';
-        rooms.forEach(room => {
-            if (room.status === 'tersedia' || room.is_available) {
+        
+        if (rooms && rooms.length > 0) {
+            rooms.forEach(room => {
+                const isAvailable = room.is_available === true || room.is_available === 1 || 
+                                  room.status === 'tersedia' || room.status === 'available';
+                
+                console.log('Room:', room.name, 'Available:', isAvailable);
+                
+                if (isAvailable) {
+                    const option = document.createElement('option');
+                    option.value = room.id;
+                    const capacityText = room.capacity ? ` (Kapasitas: ${room.capacity})` : '';
+                    option.textContent = `${room.name}${capacityText}`;
+                    option.dataset.name = room.name;
+                    itemSelect.appendChild(option);
+                }
+            });
+            
+            if (itemSelect.options.length === 1) {
                 const option = document.createElement('option');
-                option.value = room.id;
-                option.textContent = room.name;
-                option.dataset.name = room.name;
+                option.value = '';
+                option.textContent = 'Tidak ada ruangan tersedia';
+                option.disabled = true;
                 itemSelect.appendChild(option);
             }
-        });
+        } else {
+            const option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Tidak ada ruangan tersedia';
+            option.disabled = true;
+            itemSelect.appendChild(option);
+        }
     }
 }
 
