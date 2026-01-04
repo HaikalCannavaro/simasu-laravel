@@ -119,9 +119,9 @@
                                 <i class="bi bi-pencil"></i>
                             </button>
                             <form action="{{ route('announcements.delete', $item->id) }}" 
-                                  method="POST" 
-                                  class="d-inline"
-                                  onsubmit="return confirm('Yakin ingin menghapus pengumuman ini?')">
+                                    method="POST" 
+                                    class="d-inline"
+                                    onsubmit="return confirm('Yakin ingin menghapus pengumuman ini?')">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" 
@@ -149,20 +149,27 @@
             </div>
 
             <div class="card-body">
-                <div class="mb-3">
-                    <h6 class="fw-semibold mb-0">Barang baru ditambahkan</h6>
-                    <small class="text-muted">5 telekung</small>
-                </div>
-
-                <div class="mb-3">
-                    <h6 class="fw-semibold mb-0">Ruangan disewa</h6>
-                    <small class="text-muted">Aula utama</small>
-                </div>
-
-                <div>
-                    <h6 class="fw-semibold mb-0">Peminjaman selesai</h6>
-                    <small class="text-muted">10 kursi</small>
-                </div>
+                @forelse ($activities as $activity)
+                    <div class="mb-3 d-flex gap-2">
+                        <div>
+                            @if ($activity['type'] === 'barang')
+                                <i class="bi bi-box-seam text-success"></i>
+                            @else
+                                <i class="bi bi-door-open text-primary"></i>
+                            @endif
+                        </div>
+                        <div>
+                            <h6 class="fw-semibold mb-0">
+                                {{ $activity['title'] }}
+                            </h6>
+                            <small class="text-muted">
+                                {{ $activity['description'] }}
+                            </small>
+                        </div>
+                    </div>
+                @empty
+                    <p class="text-muted text-center">Belum ada aktivitas</p>
+                @endforelse
             </div>
         </div>
     </div>

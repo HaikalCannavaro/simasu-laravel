@@ -8,9 +8,7 @@ use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
-    /* =========================================================
-     * HELPER
-     * ========================================================= */
+    /*HELPER*/
     private function http()
     {
         return Http::withoutVerifying()
@@ -23,15 +21,13 @@ class DashboardController extends Controller
         return config('api.base_url');
     }
 
-    /* =========================================================
-     * DASHBOARD
-     * ========================================================= */
+    /* DASHBOARD */
     public function index()
     {
         $baseUrl = $this->baseUrl();
         $http = Http::withoutVerifying()->timeout(10);
 
-        /* ---------- ANNOUNCEMENTS ---------- */
+        /*ANNOUNCEMENTS*/
         $berita = collect(
             $http->get($baseUrl . '/api/announcements')->json() ?? []
         )->map(fn ($item) => (object) [
@@ -41,7 +37,7 @@ class DashboardController extends Controller
             'tag'      => $item['tag'] ?? 'Informasi',
         ]);
 
-        /* ---------- EVENTS ---------- */
+        /* EVENTS*/
         $agenda = collect(
             $http->get($baseUrl . '/api/events')->json() ?? []
         )->map(fn ($item) => (object) [
@@ -55,7 +51,7 @@ class DashboardController extends Controller
         ->sortBy('datetime')
         ->values();
 
-        /* ---------- COUNTS ---------- */
+        /* COUNTS*/
         $totalInventaris = count(
             $http->get($baseUrl . '/api/inventory')->json() ?? []
         );
@@ -68,18 +64,52 @@ class DashboardController extends Controller
             $http->get($baseUrl . '/api/profile')->json() ?? []
         );
 
+        //AKTIVITAS TERBARU
+
+        // INVENTARIS
+        $inventory = collect(
+            $http->get($baseUrl . '/api/inventory')->json() ?? []
+        )->map(function ($item) {
+            return [
+                'type'        => 'barang',
+                'title'       => 'Barang baru ditambahkan',
+                'description' => ($item['stock'] ?? 0) . ' ' . ($item['name'] ?? ''),
+                'sort_key'    => $item['id'] ?? 0, // 👈 pakai ID
+            ];
+        });
+
+        // RUANGAN
+        $rooms = collect(
+            $http->get($baseUrl . '/api/rooms')->json() ?? []
+        )->map(function ($item) {
+            return [
+                'type'        => 'ruangan',
+                'title'       => 'Ruangan ditambahkan',
+                'description' => $item['name'] ?? '',
+                'sort_key'    => $item['id'] ?? 0,
+            ];
+        });
+
+        // GABUNG + SORT
+        $activities = $inventory
+            ->merge($rooms)
+            ->sortByDesc('sort_key')
+            ->take(5)
+            ->values();
+
+
         return view('dashboard.index', compact(
             'totalInventaris',
             'ruanganTersedia',
             'anggotaAktif',
             'berita',
-            'agenda'
+            'agenda',
+            'activities'
         ));
     }
 
-    /* =========================================================
-     * ANNOUNCEMENTS
-     * ========================================================= */
+
+    /* ANNOUNCEMENTS*/
     public function storeAnnouncement(Request $request)
     {
         $data = $request->validate([
@@ -127,9 +157,7 @@ class DashboardController extends Controller
             : back()->with('error', 'Gagal menghapus pengumuman');
     }
 
-    /* =========================================================
-     * EVENTS
-     * ========================================================= */
+    /* EVENTS */
     public function storeEvent(Request $request)
     {
         $data = $request->validate([
